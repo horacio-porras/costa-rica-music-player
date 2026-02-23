@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("CostaRicaMusicPlayer")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e2d4487fee8a455c0cd790c128bffc71810e8597")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f375ddede6ccdf55c1bd5b2d1e82b4a521294cf6")]
 [assembly: System.Reflection.AssemblyProductAttribute("CostaRicaMusicPlayer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CostaRicaMusicPlayer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
