@@ -1,0 +1,55 @@
+-- 1. Artistas
+CREATE TABLE Artists (
+    ArtistId INTEGER PRIMARY KEY AUTOINCREMENT,
+    Name TEXT NOT NULL,
+    Biography TEXT,
+    ImageUrl TEXT
+);
+
+-- 2. Álbumes
+CREATE TABLE Albums (
+    AlbumId INTEGER PRIMARY KEY AUTOINCREMENT,
+    Title TEXT NOT NULL,
+    ReleaseYear INTEGER,
+    ArtistId INTEGER NOT NULL,
+    CoverImageUrl TEXT,
+    CONSTRAINT FK_Album_Artist FOREIGN KEY (ArtistId) REFERENCES Artists(ArtistId) ON DELETE CASCADE
+);
+
+-- 3. Canciones
+CREATE TABLE Songs (
+    SongId INTEGER PRIMARY KEY AUTOINCREMENT,
+    Title TEXT NOT NULL,
+    Duration INTEGER, -- Duración en segundos
+    FilePath TEXT NOT NULL,
+    ArtistId INTEGER NOT NULL,
+    AlbumId INTEGER NULL,
+    CONSTRAINT FK_Song_Artist FOREIGN KEY (ArtistId) REFERENCES Artists(ArtistId) ON DELETE CASCADE,
+    CONSTRAINT FK_Song_Album FOREIGN KEY (AlbumId) REFERENCES Albums(AlbumId) ON DELETE SET NULL
+);
+
+-- 4. Usuarios
+CREATE TABLE Users (
+    UserId INTEGER PRIMARY KEY AUTOINCREMENT,
+    Username TEXT NOT NULL UNIQUE,
+    Email TEXT NOT NULL UNIQUE,
+    PasswordHash TEXT NOT NULL
+);
+
+-- 5. Playlists
+CREATE TABLE Playlists (
+    PlaylistId INTEGER PRIMARY KEY AUTOINCREMENT,
+    Name TEXT NOT NULL,
+    UserId INTEGER NOT NULL,
+    CONSTRAINT FK_Playlist_User FOREIGN KEY (UserId) REFERENCES Users(UserId) ON DELETE CASCADE
+);
+
+-- 6. Relación Playlist-Canciones
+CREATE TABLE PlaylistSongs (
+    PlaylistId INTEGER NOT NULL,
+    SongId INTEGER NOT NULL,
+    AddedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (PlaylistId, SongId),
+    CONSTRAINT FK_PS_Playlist FOREIGN KEY (PlaylistId) REFERENCES Playlists(PlaylistId) ON DELETE CASCADE,
+    CONSTRAINT FK_PS_Song FOREIGN KEY (SongId) REFERENCES Songs(SongId) ON DELETE CASCADE
+);
