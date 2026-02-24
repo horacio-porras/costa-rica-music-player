@@ -1,3 +1,5 @@
 <Solution>
   <Project Path="CostaRicaMusicPlayer/CostaRicaMusicPlayer.csproj" />
+  <Project Path="CostaRicaMusicPlayerBLL/CostaRicaMusicPlayerBLL.csproj" Id="09eee6d9-c14d-4b29-a78e-f4372f75c9e1" />
+  <Project Path="CostaRicaMusicPlayerDAL/CostaRicaMusicPlayerDAL.csproj" Id="ea961a4b-d625-49d0-99a9-92bf4aa6378c" />
 </Solution>
