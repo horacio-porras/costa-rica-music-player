@@ -1,0 +1,91 @@
+@using CostaRicaMusicBLL.Dtos
+@model PlaylistDto
+
+<div class="modal fade" id="modalCrearPlaylist" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-white border-0">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus-circle me-2 text-spotify-green"></i>
+                    Crear nueva playlist
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formCrearPlaylist" asp-action="AgregarPlaylist" method="post" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label asp-for="Name" class="form-label text-white">Nombre de la playlist</label>
+                        <input asp-for="Name" class="form-control bg-spotify-light border-0 text-white"
+                               placeholder="Ej: Éxitos de Costa Rica" required />
+                        <span asp-validation-for="Name" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="UserId" class="form-label text-white">Usuario ID</label>
+                        <input asp-for="UserId" class="form-control bg-spotify-light border-0 text-white"
+                               placeholder="ID del usuario" required />
+                        <span asp-validation-for="UserId" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-white">Imagen de portada</label>
+
+                        <!-- Preview de la imagen -->
+                        <div class="image-preview-container mb-2 text-center">
+                            <img id="previewImagen" src="/img/placeholder-playlist.jpg"
+                                 class="rounded image-preview"
+                                 style="width: 150px; height: 150px; object-fit: cover; border: 2px solid #404040;" />
+                        </div>
+
+                        <!-- Input para subir archivo -->
+                        <input type="file" class="form-control bg-spotify-light border-0 text-white"
+                               id="imagenPortada" name="imagenPortada" accept="image/*" />
+                        <small class="text-secondary">Formatos permitidos: JPG, PNG, GIF, AVIF. Tamaño máx: 5MB</small>
+
+                        <!-- Campo oculto para la URL (se llena después de subir la imagen) -->
+                        <input type="hidden" asp-for="CoverImageUrl" id="CoverImageUrl" />
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn-spotify" id="btnGuardarPlaylist">
+                        <i class="fas fa-save me-2"></i>Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Script para preview de imagen -->
+<script>
+    document.getElementById('imagenPortada').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            // Validar tamaño (5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('La imagen no puede ser mayor a 5MB');
+                this.value = '';
+                return;
+            }
+
+            // Validar tipo
+            const tiposPermitidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/avif'];
+            if (!tiposPermitidos.includes(file.type)) {
+                alert('Tipo de archivo no permitido. Use JPG, PNG, GIF o AVIF');
+                this.value = '';
+                return;
+            }
+
+            // Mostrar preview
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('previewImagen').src = e.target.result;
+            }
+            reader.readAsDataURL(file);
+        } else {
+            // Si no hay archivo, volver al placeholder
+            document.getElementById('previewImagen').src = '/img/placeholder-playlist.jpg';
+        }
+    });
+</script>

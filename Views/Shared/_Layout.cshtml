@@ -1,0 +1,84 @@
+@{
+    Layout = null;
+    var title = ViewData["Title"] ?? "Costa Rica Music";
+}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@title - Costa Rica Music</title>
+
+    <link rel="stylesheet" href="~/css/music.css" />
+    <environment include="Development">
+        <script src="https://code.jquery.com/jquery-3.7.0.min.js"
+                integrity="sha256-3gJwYp2XQp6k5f5b+6b3y6k5x5qQ5Y3s6H+8Q5Kk5v0="
+                crossorigin="anonymous"></script>
+    </environment>
+    <environment exclude="Development">
+        <script src="https://code.jquery.com/jquery-3.7.0.min.js"
+                integrity="sha256-3gJwYp2XQp6k5f5b+6b3y6k5x5qQ5Y3s6H+8Q5Kk5v0="
+                crossorigin="anonymous"></script>
+    </environment>
+</head>
+<body>
+    <header class="crmp-header">
+        <div class="crmp-header-inner">
+            <a class="crmp-logo" href="/">Costa Rica Music</a>
+
+            <div class="crmp-search">
+                <input id="txtBuscarCancion" type="search" placeholder="Buscar canción o artista..." />
+            </div>
+        </div>
+    </header>
+
+    <nav class="crmp-nav">
+        <ul>
+            <li><a href="/">Inicio</a></li>
+            <li><a href="/Music">Music</a></li>
+            <li><a href="/Artists">Artistas</a></li>
+            <li><a href="/Albums">Álbumes</a></li>
+        </ul>
+    </nav>
+
+    <main class="crmp-main">
+        <div class="crmp-layout">
+            <section class="crmp-content">
+                @RenderBody()
+            </section>
+
+            <aside class="crmp-sidebar">
+                <div id="listaArtistas" class="sidebar-artists">
+                    <!-- rendered by Music.js -->
+                </div>
+            </aside>
+        </div>
+    </main>
+
+    <footer class="crmp-footer">
+        <div>© @DateTime.Now.Year Costa Rica Music</div>
+    </footer>
+
+    @RenderSection("Scripts", required: false)
+
+    <!-- Artist modal -->
+    <div id="artistModal" class="crmp-modal" style="display:none;">
+        <div class="crmp-modal-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);"></div>
+        <div class="crmp-modal-dialog" style="position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;padding:20px;border-radius:8px;max-width:480px;width:90%;z-index:1000;">
+            <button id="artistModalClose" style="position:absolute;right:8px;top:8px;background:transparent;border:0;font-size:20px;">&times;</button>
+            <div class="artist-modal-body" style="display:flex;gap:16px;align-items:flex-start;">
+                <div style="flex:0 0 96px;">
+                    <img id="artistModalImage" src="/img/placeholder-artist.png" alt="" style="width:96px;height:96px;object-fit:cover;border-radius:8px;" />
+                </div>
+                <div style="flex:1;">
+                    <h2 id="artistModalName" style="margin:0 0 8px 0;font-size:1.25rem;"></h2>
+                    <p id="artistModalBio" style="margin:0;color:#444"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- global scripts (keep before closing body so pages can append via Scripts section) -->
+    <script src="~/js/Music.js" asp-append-version="true"></script>
+</body>
+</html>

@@ -1,0 +1,152 @@
+@using CostaRicaMusicBLL.Dtos
+@model PlaylistDto
+
+<div class="modal fade" id="modalEditarPlaylist" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-white border-0">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title">
+                    <i class="fas fa-edit me-2 text-spotify-green"></i>
+                    Editar playlist
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formEditarPlaylist" asp-action="ActualizarPlaylist" method="post" enctype="multipart/form-data">
+                <input type="hidden" asp-for="PlaylistId" id="PlaylistId" />
+
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label asp-for="Name" class="form-label text-white">Nombre de la playlist</label>
+                        <input asp-for="Name" class="form-control bg-spotify-light border-0 text-white"
+                               id="EditPlaylistName" placeholder="Ej: Éxitos de Costa Rica" required />
+                        <span asp-validation-for="Name" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="UserId" class="form-label text-white">Usuario ID</label>
+                        <input asp-for="UserId" class="form-control bg-spotify-light border-0 text-white"
+                               id="EditUserId" placeholder="ID del usuario" required />
+                        <span asp-validation-for="UserId" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-white">Imagen de portada actual</label>
+
+                        <!-- Preview de la imagen actual -->
+                        <div class="image-preview-container mb-3 text-center">
+                            <img id="previewImagenActual" src=""
+                                 class="rounded image-preview mb-2"
+                                 style="width: 150px; height: 150px; object-fit: cover; border: 2px solid #404040;" />
+                            <p class="text-secondary small" id="nombreImagenActual"></p>
+                        </div>
+
+                        <!-- Opción para cambiar imagen -->
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="cambiarImagen">
+                            <label class="form-check-label text-white small" for="cambiarImagen">
+                                Cambiar imagen
+                            </label>
+                        </div>
+
+                        <!-- Input para nueva imagen (inicialmente oculto) -->
+                        <div id="nuevaImagenContainer" style="display: none;">
+                            <label class="form-label text-white">Nueva imagen</label>
+                            <div class="image-preview-container mb-2 text-center">
+                                <img id="previewNuevaImagen" src="/img/placeholder-playlist.jpg"
+                                     class="rounded image-preview"
+                                     style="width: 150px; height: 150px; object-fit: cover; border: 2px solid #404040;" />
+                            </div>
+                            <input type="file" class="form-control bg-spotify-light border-0 text-white"
+                                   id="imagenPortada" name="imagenPortada" accept="image/*" />
+                            <small class="text-secondary">Formatos permitidos: JPG, PNG, GIF, AVIF. Tamaño máx: 5MB</small>
+                        </div>
+
+                        <!-- Campo oculto para la URL actual -->
+                        <input type="hidden" asp-for="CoverImageUrl" id="EditCoverImageUrl" />
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn-spotify" id="btnEditarPlaylist">
+                        <i class="fas fa-save me-2"></i>Actualizar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Script para manejar la edición de imagen
+    $(document).ready(function() {
+        // Cuando se abre el modal de edición
+        $('#modalEditarPlaylist').on('show.bs.modal', function() {
+            // Resetear el estado
+            $('#cambiarImagen').prop('checked', false);
+            $('#nuevaImagenContainer').hide();
+            $('#imagenPortada').val('');
+            $('#previewNuevaImagen').attr('src', '/img/placeholder-playlist.jpg');
+        });
+
+        // Mostrar/ocultar campo de nueva imagen
+        $('#cambiarImagen').change(function() {
+            if ($(this).is(':checked')) {
+                $('#nuevaImagenContainer').slideDown();
+            } else {
+                $('#nuevaImagenContainer').slideUp();
+                $('#imagenPortada').val('');
+            }
+        });
+
+        // Preview de nueva imagen
+        $('#imagenPortada').change(function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                // Validar tamaño (5MB)
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('La imagen no puede ser mayor a 5MB');
+                    this.value = '';
+                    $('#cambiarImagen').prop('checked', false);
+                    $('#nuevaImagenContainer').slideUp();
+                    return;
+                }
+
+                // Validar tipo
+                const tiposPermitidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/avif'];
+                if (!tiposPermitidos.includes(file.type)) {
+                    alert('Tipo de archivo no permitido. Use JPG, PNG, GIF o AVIF');
+                    this.value = '';
+                    $('#cambiarImagen').prop('checked', false);
+                    $('#nuevaImagenContainer').slideUp();
+                    return;
+                }
+
+                // Mostrar preview
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    $('#previewNuevaImagen').attr('src', e.target.result);
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+    });
+
+    // Función para cargar los datos en el modal de edición
+    function cargarPlaylistEnModal(playlist) {
+        $('#PlaylistId').val(playlist.playlistId);
+        $('#EditPlaylistName').val(playlist.name);
+        $('#EditUserId').val(playlist.userId);
+        $('#EditCoverImageUrl').val(playlist.coverImageUrl);
+
+        // Mostrar la imagen actual
+        if (playlist.coverImageUrl) {
+            $('#previewImagenActual').attr('src', playlist.coverImageUrl);
+            // Extraer solo el nombre del archivo para mostrar
+            const nombreArchivo = playlist.coverImageUrl.split('/').pop();
+            $('#nombreImagenActual').text(nombreArchivo);
+        } else {
+            $('#previewImagenActual').attr('src', '/img/placeholder-playlist.jpg');
+            $('#nombreImagenActual').text('Sin imagen');
+        }
+    }
+</script>

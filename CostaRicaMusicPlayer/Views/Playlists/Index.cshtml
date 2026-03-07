@@ -1,0 +1,33 @@
+@using CostaRicaMusicBLL.Dtos
+@model PlaylistDto
+
+@{
+    ViewData["Title"] = "Playlists";
+}
+
+<div class="playlists-page">
+    <!-- Header con título y botón crear -->
+    <div class="playlists-header d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="playlists-title mb-1">Tus playlists</h1>
+            <p class="playlists-subtitle mb-0">Crea y administra tus colecciones de música</p>
+        </div>
+        <button type="button" class="btn-spotify" data-bs-toggle="modal" data-bs-target="#modalCrearPlaylist">
+            <i class="fas fa-plus-circle me-2"></i>Crear playlist
+        </button>
+    </div>
+
+    <!-- Grid de playlists -->
+    <div id="playlistsGrid" class="playlists-grid">
+        <!-- Playlists cargadas por JS -->
+    </div>
+</div>
+
+@await Html.PartialAsync("_Create")
+@await Html.PartialAsync("_Edit")
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+    <script src="~/js/Playlists.js" asp-append-version="true"></script>
+}
