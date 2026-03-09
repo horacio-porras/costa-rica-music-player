@@ -3,6 +3,19 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
+# Repo hygiene (explicitly prevent IDE/build artifacts in commits)
+.vs/
+**/.vs/
+**/[Bb]in/
+**/[Oo]bj/
+*.suo
+*.user
+*.userosscache
+*.db-wal
+*.db-shm
+*.cache
+*.tmp
+
 # User-specific files
 *.rsuser
 *.suo
