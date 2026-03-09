@@ -37,10 +37,13 @@
             // Limpiar modal al cerrar
             $('#modalCrearPlaylist').on('hidden.bs.modal', function () {
                 $('#formCrearPlaylist')[0].reset();
+                $('#previewImagen').attr('src', '/img/placeholder-playlist.jpg');
             });
 
             $('#modalEditarPlaylist').on('hidden.bs.modal', function () {
                 $('#formEditarPlaylist')[0].reset();
+                $('#previewImagenActual').attr('src', '/img/placeholder-playlist.jpg');
+                $('#nombreImagenActual').text('Sin imagen');
             });
         },
 
@@ -115,10 +118,14 @@
                 return;
             }
 
+            const formData = new FormData(form[0]);
+
             $.ajax({
                 url: form.attr('action'),
                 type: 'POST',
-                data: form.serialize(),
+                data: formData,
+                processData: false,
+                contentType: false,
                 success: (response) => {
                     if (response.esCorrecto) {
                         $('#modalCrearPlaylist').modal('hide');
@@ -168,10 +175,14 @@
                 return;
             }
 
+            const formData = new FormData(form[0]);
+
             $.ajax({
                 url: form.attr('action'),
                 type: 'POST',
-                data: form.serialize(),
+                data: formData,
+                processData: false,
+                contentType: false,
                 success: (response) => {
                     if (response.esCorrecto) {
                         $('#modalEditarPlaylist').modal('hide');

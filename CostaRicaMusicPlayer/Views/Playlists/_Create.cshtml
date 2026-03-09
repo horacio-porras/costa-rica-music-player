@@ -39,7 +39,7 @@
 
                         <!-- Input para subir archivo -->
                         <input type="file" class="form-control bg-spotify-light border-0 text-white"
-                               id="imagenPortada" name="imagenPortada" accept="image/*" />
+                               id="imagenPortadaCrear" name="imagenPortada" accept="image/*" />
                         <small class="text-secondary">Formatos permitidos: JPG, PNG, GIF, AVIF. Tamaño máx: 5MB</small>
 
                         <!-- Campo oculto para la URL (se llena después de subir la imagen) -->
@@ -59,17 +59,17 @@
 
 <!-- Script para preview de imagen -->
 <script>
-    document.getElementById('imagenPortada').addEventListener('change', function(e) {
+    document.getElementById('imagenPortadaCrear').addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (file) {
-            // Validar tamaño (5MB)
+            //Valida tamaño (5MB)
             if (file.size > 5 * 1024 * 1024) {
                 alert('La imagen no puede ser mayor a 5MB');
                 this.value = '';
                 return;
             }
 
-            // Validar tipo
+            //Valida tipo
             const tiposPermitidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/avif'];
             if (!tiposPermitidos.includes(file.type)) {
                 alert('Tipo de archivo no permitido. Use JPG, PNG, GIF o AVIF');
@@ -77,14 +77,14 @@
                 return;
             }
 
-            // Mostrar preview
+            //Muestrapreview
             const reader = new FileReader();
             reader.onload = function(e) {
                 document.getElementById('previewImagen').src = e.target.result;
             }
             reader.readAsDataURL(file);
         } else {
-            // Si no hay archivo, volver al placeholder
+            //Si no hay archivo, vuelve al placeholder
             document.getElementById('previewImagen').src = '/img/placeholder-playlist.jpg';
         }
     });

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
 using CostaRicaMusicBLL.Dtos;
 using CostaRicaMusicBLL.Servicios.Playlists;
 using System.Threading.Tasks;
@@ -34,16 +35,16 @@ namespace CostaRicaMusicPlayer.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> AgregarPlaylist(PlaylistDto playlist)
+        public async Task<IActionResult> AgregarPlaylist(PlaylistDto playlist, IFormFile? imagenPortada = null)
         {
-            var response = await _playlistServicio.AgregarPlaylistAsync(playlist);
+            var response = await _playlistServicio.AgregarPlaylistAsync(playlist, imagenPortada);
             return Json(response);
         }
 
         [HttpPost]
-        public async Task<IActionResult> ActualizarPlaylist(PlaylistDto playlist)
+        public async Task<IActionResult> ActualizarPlaylist(PlaylistDto playlist, IFormFile? imagenPortada = null)
         {
-            var response = await _playlistServicio.ActualizarPlaylistAsync(playlist);
+            var response = await _playlistServicio.ActualizarPlaylistAsync(playlist, imagenPortada);
             return Json(response);
         }
 
