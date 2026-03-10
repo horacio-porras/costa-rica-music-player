@@ -5,29 +5,38 @@
 <div class="music-page">
     <div class="music-header d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1 class="music-title mb-1">Explora tu música</h1>
+            <h1 class="music-title mb-1">Explora la música</h1>
             <p class="music-subtitle mb-0">Canciones y artistas de Costa Rica Music</p>
         </div>
         <div class="music-search input-group">
             <span class="input-group-text">
                 <i class="bi bi-search"></i>
             </span>
-            <input type="text" class="form-control" id="txtBuscarCancion" placeholder="Buscar canción o artista..." />
+            <input type="text" class="form-control" id="txtBuscarCancion" placeholder="Buscar canción, álbum o artista..." />
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-lg-8">
+    <div class="row music-layout">
+        <div class="col-lg-7 col-md-12">
             <h2 class="section-title">Canciones</h2>
             <div id="songsGrid" class="music-grid">
                 <!-- Cards de canciones renderizadas por JS -->
             </div>
         </div>
 
-        <div class="col-lg-4">
-            <h2 class="section-title">Artistas</h2>
-            <div id="listaArtistas" class="artists-list">
-                <!-- Artistas renderizados por JS -->
+        <div class="col-lg-5 col-md-12">
+            <div class="side-section mb-4">
+                <h2 class="section-title">Artistas</h2>
+                <div id="listaArtistas" class="artists-list">
+                    <!-- Artistas renderizados por JS -->
+                </div>
+            </div>
+
+            <div class="side-section">
+                <h2 class="section-title">Álbumes</h2>
+                <div id="listaAlbums" class="albums-list">
+                    <!-- Álbumes renderizados por JS -->
+                </div>
             </div>
         </div>
     </div>
@@ -56,9 +65,49 @@
 
                 <hr class="border-secondary">
 
+                <div class="row">
+                    <div class="col-12 col-md-6 mb-3 text-center">
+                        <h6 class="mb-2">Canciones</h6>
+                        <ul id="artistSongsList" class="list-group list-group-flush text-start"></ul>
+                    </div>
+                    <div class="col-12 col-md-6 mb-3 text-center">
+                        <h6 class="mb-2">Álbumes</h6>
+                        <ul id="artistAlbumsList" class="list-group list-group-flush text-start"></ul>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="albumModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-white border-0">
+
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title">Álbum</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body text-center">
+
+                <img id="albumModalImage"
+                     class="rounded mb-3"
+                     width="160"
+                     height="160"
+                     style="object-fit:cover;" />
+
+                <h4 id="albumModalTitle"></h4>
+                <p id="albumModalArtist" class="text-secondary mb-1"></p>
+                <p id="albumModalYear" class="text-secondary small"></p>
+
+                <hr class="border-secondary">
+
                 <h6 class="mb-3">Canciones</h6>
 
-                <ul id="artistSongsList" class="list-group list-group-flush"></ul>
+                <ul id="albumSongsList" class="list-group list-group-flush"></ul>
 
             </div>
 

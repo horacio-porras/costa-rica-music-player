@@ -3,6 +3,7 @@ using CostaRicaMusicBLL;
 using CostaRicaMusicBLL.Servicios.Artists;
 using CostaRicaMusicBLL.Servicios.Playlists;
 using CostaRicaMusicBLL.Servicios.Songs;
+using CostaRicaMusicBLL.Servicios.Albums;
 using CostaRicaMusicDAL.Data;
 using CostaRicaMusicDAL.Repositorios.Generico;
 
@@ -22,6 +23,7 @@ builder.Services.AddScoped(typeof(IRepositorioGenerico<>), typeof(RepositorioGen
 builder.Services.AddScoped<ISongServicio, SongServicio>();
 builder.Services.AddScoped<IArtistServicio, ArtistServicio>();
 builder.Services.AddScoped<IPlaylistServicio, PlaylistServicio>();
+builder.Services.AddScoped<IAlbumServicio, AlbumServicio>();
 
 builder.Services.AddSingleton<IHostEnvironment>(builder.Environment);
 

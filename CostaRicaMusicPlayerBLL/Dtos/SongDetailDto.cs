@@ -17,6 +17,7 @@ namespace CostaRicaMusicBLL.Dtos
         // Datos de álbum / artista para la UI
         public string? AlbumTitle { get; set; }
         public string? AlbumCoverImageUrl { get; set; }
+        public int? AlbumReleaseYear { get; set; }
         public string? ArtistName { get; set; }
         public string? ArtistImageUrl { get; set; }
         public int? ArtistId { get; set; }

@@ -1,7 +1,8 @@
-﻿(() => {
+(() => {
     const Home = {
         songs: [],
         artists: [],
+        albums: [],
         playlists: [],
 
         init() {
@@ -13,11 +14,19 @@
             const self = this;
 
             // Delegación de eventos para artistas
-            $(document).on('click', '.artist-card, .artist-name', (e) => {
+            $(document).on('click', '.artist-card, .artist-name, .music-card-artist', (e) => {
                 const el = $(e.currentTarget);
                 const artistId = el.data('artist-id') || el.closest('.artist-card').data('artist-id');
                 if (!artistId) return;
                 self.mostrarArtist(artistId);
+            });
+
+            // Delegación de eventos para álbumes (en cards y en listas)
+            $(document).on('click', '.music-card-album, .artist-album-item', (e) => {
+                const el = $(e.currentTarget);
+                const albumId = el.data('album-id');
+                if (!albumId) return;
+                self.mostrarAlbum(albumId);
             });
         },
 
@@ -26,6 +35,7 @@
             Promise.all([
                 this.cargarSongs(),
                 this.cargarArtists(),
+                this.cargarAlbums(),
                 this.cargarPlaylists()
             ]).then(() => {
                 // Una vez cargados todos, mostrar los elementos aleatorios
@@ -39,6 +49,14 @@
             return $.get('/Music/ObtenerSongs', result => {
                 if (result.esCorrecto) {
                     this.songs = result.data || [];
+                }
+            });
+        },
+
+        cargarAlbums() {
+            return $.get('/Music/ObtenerAlbums', result => {
+                if (result.esCorrecto) {
+                    this.albums = result.data || [];
                 }
             });
         },
@@ -119,6 +137,9 @@
                 const cover = song.coverImageUrl || song.albumCoverImageUrl || '/img/placeholder-album.avif';
                 const artistName = song.artistName || 'Artista desconocido';
 
+                const albumTitle = song.albumTitle || '';
+                const albumId = song.albumId || '';
+
                 const card = `
                     <div class="music-card">
                         <div class="music-card-cover">
@@ -128,6 +149,8 @@
                             <div class="music-card-title" title="${song.title}">${song.title}</div>
                             <div class="music-card-subtitle">
                                 <span class="music-card-artist" data-artist-id="${song.artistId || ''}" title="${artistName}">${artistName}</span>
+                                <span class="music-card-dot">•</span>
+                                <span class="music-card-album" data-album-id="${albumId}" title="${albumTitle}">${albumTitle}</span>
                             </div>
                         </div>
                         <div class="music-card-duration">
@@ -187,11 +210,76 @@
             // Filtrar canciones del artista
             const songs = this.songs.filter(s => s.artistId == artistId);
 
-            const list = $('#artistSongsList');
+            const listSongs = $('#artistSongsList');
+            listSongs.empty();
+
+            if (songs.length === 0) {
+                listSongs.append('<li class="list-group-item text-secondary">No hay canciones</li>');
+            } else {
+                songs.forEach(song => {
+                    listSongs.append(`
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>${song.title}</span>
+                            <span class="text-secondary small">
+                                ${this.formatearDuracion(song.duration)}
+                            </span>
+                        </li>
+                    `);
+                });
+            }
+
+            // Filtrar álbumes del artista (por ArtistId en albums)
+            const albums = this.albums.filter(a => a.artistId == artistId);
+
+            const listAlbums = $('#artistAlbumsList');
+            listAlbums.empty();
+
+            if (albums.length === 0) {
+                listAlbums.append('<li class="list-group-item text-secondary">No hay álbumes</li>');
+            } else {
+                albums.forEach(album => {
+                    const yearText = album.releaseYear ? ` (${album.releaseYear})` : '';
+                    listAlbums.append(`
+                        <li class="list-group-item d-flex justify-content-between artist-album-item" data-album-id="${album.albumId}">
+                            <span>${album.title}${yearText}</span>
+                        </li>
+                    `);
+                });
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('artistModal'));
+            modal.show();
+        },
+
+        mostrarAlbum(albumId) {
+            const album = this.albums.find(a => a.albumId == albumId);
+
+            if (!album) return;
+
+            const image = album.coverImageUrl || '/img/placeholder-album.avif';
+
+            $('#albumModalTitle').text(album.title);
+
+            // Intentar obtener nombre de artista desde albums o desde artists
+            let artistName = album.artistName || '';
+            if (!artistName && album.artistId) {
+                const artist = this.artists.find(a => a.artistId == album.artistId);
+                if (artist) {
+                    artistName = artist.name;
+                }
+            }
+
+            $('#albumModalArtist').text(artistName || '');
+            $('#albumModalYear').text(album.releaseYear ? `Año de lanzamiento: ${album.releaseYear}` : '');
+            $('#albumModalImage').attr('src', image);
+
+            const songs = this.songs.filter(s => s.albumId == album.albumId);
+
+            const list = $('#albumSongsList');
             list.empty();
 
             if (songs.length === 0) {
-                list.append('<li class="list-group-item text-secondary">No hay canciones</li>');
+                list.append('<li class="list-group-item text-secondary">No hay canciones en este álbum</li>');
             } else {
                 songs.forEach(song => {
                     list.append(`
@@ -205,7 +293,7 @@
                 });
             }
 
-            const modal = new bootstrap.Modal(document.getElementById('artistModal'));
+            const modal = new bootstrap.Modal(document.getElementById('albumModal'));
             modal.show();
         }
     };

@@ -142,6 +142,7 @@ namespace CostaRicaMusicBLL.Servicios.Songs
                     AlbumTitle = s.Album != null ? s.Album.Title : null,
                     AlbumCoverImageUrl = s.Album != null ? s.Album.CoverImageUrl : null,
                     CoverImageUrl = s.Album != null ? s.Album.CoverImageUrl : null,
+                    AlbumReleaseYear = s.Album != null ? s.Album.ReleaseYear : null,
                     ArtistName = s.Album != null && s.Album.Artist != null ? s.Album.Artist.Name : null,
                     ArtistImageUrl = s.Album != null && s.Album.Artist != null ? s.Album.Artist.ImageUrl : null,
                     ArtistId = s.Album != null && s.Album.Artist != null ? s.Album.Artist.ArtistId : (int?)null,

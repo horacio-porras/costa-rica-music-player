@@ -2,10 +2,12 @@
     const Music = {
         songs: [],
         artists: [],
+        albums: [],
 
         init() {
             this.cargarSongs();
             this.cargarArtists();
+            this.cargarAlbums();
             this.registrarEventos();
         },
 
@@ -17,13 +19,38 @@
             });
 
 
-            $(document).on('click', '.artist-card, .artist-name', (e) => {
+            $(document).on('click', '.artist-card, .artist-name, .music-card-artist', (e) => {
                 const el = $(e.currentTarget);
                 const artistId = el.data('artist-id') || el.closest('.artist-card').data('artist-id');
-
                 if (!artistId) return;
-
                 self.mostrarArtist(artistId);
+            });
+
+            $(document).on('click', '.album-card, .music-card-album, .artist-album-item', (e) => {
+                const el = $(e.currentTarget);
+
+                // Buscar el album-id en el elemento actual o en el elemento con clase artist-album-item más cercano
+                let albumId = el.data('album-id');
+
+                if (!albumId) {
+                    // Si no tiene data-album-id, buscar en el padre o en el elemento con clase artist-album-item
+                    const artistAlbumItem = el.closest('.artist-album-item');
+                    if (artistAlbumItem.length) {
+                        albumId = artistAlbumItem.data('album-id');
+                    }
+                }
+
+                if (!albumId) {
+                    // Si aún no hay albumId, buscar en el album-card más cercano
+                    const albumCard = el.closest('.album-card');
+                    if (albumCard.length) {
+                        albumId = albumCard.data('album-id');
+                    }
+                }
+
+                if (!albumId) return;
+
+                self.mostrarAlbum(albumId);
             });
         },
 
@@ -36,11 +63,21 @@
             });
         },
 
+        cargarAlbums() {
+            $.get('/Music/ObtenerAlbums', result => {
+                if (result.esCorrecto) {
+                    this.albums = result.data || [];
+                    this.enriquecerAlbumsConArtistas();
+                }
+            });
+        },
+
         cargarArtists() {
             $.get('/Music/ObtenerArtists', result => {
                 if (result.esCorrecto) {
                     this.artists = result.data || [];
                     this.pintarArtists(this.artists);
+                    this.enriquecerAlbumsConArtistas();
                 }
             });
         },
@@ -62,6 +99,7 @@
                     || '/img/placeholder-album.avif';
                 const artistName = song.artistName || 'Artista desconocido';
                 const albumTitle = song.albumTitle || '';
+                const albumId = song.albumId || '';
 
                 const card = `
                     <div class="music-card">
@@ -73,7 +111,7 @@
                             <div class="music-card-subtitle">
                                 <span class="music-card-artist" data-artist-id="${song.artistId || ''}" title="${artistName}">${artistName}</span>
                                 <span class="music-card-dot">•</span>
-                                <span class="music-card-album" title="${albumTitle}">${albumTitle}</span>
+                                <span class="music-card-album" data-album-id="${albumId}" title="${albumTitle}">${albumTitle}</span>
                             </div>
                         </div>
                         <div class="music-card-duration">
@@ -96,6 +134,13 @@
                 a.name && a.name.toLowerCase().includes(termino)
             );
             this.pintarArtists(filtradosArtists);
+
+            const filtradosAlbums = this.albums.filter(alb => {
+                const title = (alb.title || '').toLowerCase();
+                const artist = (alb.artistName || '').toLowerCase();
+                return title.includes(termino) || artist.includes(termino);
+            });
+            this.pintarAlbums(filtradosAlbums);
         },
 
         pintarArtists(artists) {
@@ -112,6 +157,58 @@
                         <div class="artist-info">
                             <div class="artist-name" data-artist-id="${artist.artistId || ''}" title="${artist.name}">${artist.name}</div>
                             ${artist.biography ? `<div class="artist-bio">${artist.biography}</div>` : ''}
+                        </div>
+                    </div>`;
+                contenedor.append(item);
+            });
+        },
+
+        // Completa info de álbumes con datos de artistas ya cargados
+        enriquecerAlbumsConArtistas() {
+            if (!this.albums || this.albums.length === 0) return;
+
+            this.albums = this.albums.map(album => {
+                // Si ya tiene nombre de artista, lo respetamos
+                if (album.artistName && album.artistName.length > 0) {
+                    return album;
+                }
+
+                // Buscamos el artista por ArtistId
+                const artist = this.artists.find(a => a.artistId === album.artistId);
+                const artistName = artist ? artist.name : (album.artistName || '');
+
+                return {
+                    ...album,
+                    artistName: artistName
+                };
+            });
+
+            this.pintarAlbums(this.albums);
+        },
+
+        pintarAlbums(albums) {
+            const contenedor = $('#listaAlbums');
+            contenedor.empty();
+
+            albums.forEach(album => {
+                const image = album.coverImageUrl || '/img/placeholder-album.avif';
+                const yearText = album.releaseYear ? `${album.releaseYear}` : '';
+                const artistName = album.artistName || '';
+                const subtitle =
+                    artistName && yearText
+                        ? `${artistName} · ${yearText}`
+                        : (artistName || yearText || '');
+
+                const item = `
+                    <div class="album-card" data-album-id="${album.albumId}">
+                        <div class="album-cover">
+                            <img src="${image}" alt="${album.title}" onerror="this.src='/img/placeholder-album.avif';" />
+                        </div>
+                        <div class="album-info">
+                            <div class="album-title" title="${album.title}">${album.title}</div>
+                            <div class="album-subtitle text-secondary small">
+                                ${subtitle}
+                            </div>
                         </div>
                     </div>`;
                 contenedor.append(item);
@@ -135,15 +232,15 @@
             // FILTRAR CANCIONES DEL ARTISTA
             const songs = this.songs.filter(s => s.artistId == artistId);
 
-            const list = $('#artistSongsList');
-            list.empty();
+            const listSongs = $('#artistSongsList');
+            listSongs.empty();
 
             if (songs.length === 0) {
-                list.append(`<li class="list-group-item text-secondary">No hay canciones</li>`);
+                listSongs.append(`<li class="list-group-item text-secondary">No hay canciones</li>`);
             } else {
                 songs.forEach(song => {
 
-                    list.append(`
+                    listSongs.append(`
                 <li class="list-group-item d-flex justify-content-between">
                     <span>${song.title}</span>
                     <span class="text-secondary small">
@@ -155,7 +252,64 @@
                 });
             }
 
+            // FILTRAR ÁLBUMES DEL ARTISTA
+            const albums = this.albums.filter(a => a.artistId == artistId);
+
+            const listAlbums = $('#artistAlbumsList');
+            listAlbums.empty();
+
+            if (albums.length === 0) {
+                listAlbums.append(`<li class="list-group-item text-secondary">No hay álbumes</li>`);
+            } else {
+                albums.forEach(album => {
+                    const yearText = album.releaseYear ? ` (${album.releaseYear})` : '';
+                    listAlbums.append(`
+                <li class="list-group-item d-flex justify-content-between artist-album-item" data-album-id="${album.albumId}">
+                    <span>${album.title}${yearText}</span>
+                </li>
+            `);
+                });
+            }
+
             const modal = new bootstrap.Modal(document.getElementById('artistModal'));
+            modal.show();
+        },
+
+        mostrarAlbum(albumId) {
+            const album = this.albums.find(a =>
+                a.albumId == albumId
+            );
+
+            if (!album) return;
+
+            const image = album.coverImageUrl || '/img/placeholder-album.avif';
+
+            $('#albumModalTitle').text(album.title);
+            $('#albumModalArtist').text(album.artistName || '');
+            $('#albumModalYear').text(album.releaseYear ? `Año de lanzamiento: ${album.releaseYear}` : '');
+            $('#albumModalImage').attr('src', image);
+
+            const songs = this.songs.filter(s => s.albumId == album.albumId);
+
+            const list = $('#albumSongsList');
+            list.empty();
+
+            if (songs.length === 0) {
+                list.append(`<li class="list-group-item text-secondary">No hay canciones en este álbum</li>`);
+            } else {
+                songs.forEach(song => {
+                    list.append(`
+                <li class="list-group-item d-flex justify-content-between">
+                    <span>${song.title}</span>
+                    <span class="text-secondary small">
+                        ${this.formatearDuracion(song.duration)}
+                    </span>
+                </li>
+            `);
+                });
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('albumModal'));
             modal.show();
         }
     };
