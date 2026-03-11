@@ -2,7 +2,7 @@
 @model PlaylistDto
 
 <div class="modal fade" id="modalCrearPlaylist" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-playlist-create">
         <div class="modal-content bg-dark text-white border-0">
             <div class="modal-header border-secondary">
                 <h5 class="modal-title">
@@ -12,42 +12,41 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form id="formCrearPlaylist" asp-action="AgregarPlaylist" method="post" enctype="multipart/form-data">
-                <div class="modal-body">
-                    <div class="mb-3">
+                <div class="modal-body modal-playlist-create-body">
+                    <div class="mb-3 modal-playlist-group">
                         <label asp-for="Name" class="form-label text-white">Nombre de la playlist</label>
                         <input asp-for="Name" class="form-control bg-spotify-light border-0 text-white"
                                placeholder="Ej: Éxitos de Costa Rica" required />
                         <span asp-validation-for="Name" class="text-danger small"></span>
                     </div>
 
-                    <div class="mb-3">
+                    <div class="mb-3 modal-playlist-group">
                         <label asp-for="UserId" class="form-label text-white">Usuario ID</label>
                         <input asp-for="UserId" class="form-control bg-spotify-light border-0 text-white"
                                placeholder="ID del usuario" required />
                         <span asp-validation-for="UserId" class="text-danger small"></span>
                     </div>
 
-                    <div class="mb-3">
+                    <div class="mb-2 modal-playlist-group">
                         <label class="form-label text-white">Imagen de portada</label>
 
                         <!-- Preview de la imagen -->
-                        <div class="image-preview-container mb-2 text-center">
-                            <img id="previewImagen" src="/img/placeholder-playlist.jpg"
-                                 class="rounded image-preview"
-                                 style="width: 150px; height: 150px; object-fit: cover; border: 2px solid #404040;" />
+                        <div class="image-preview-container modal-playlist-preview-wrap mb-3 text-center">
+                            <img id="previewImagen" src="/img/placeholder-cover.png"
+                                 class="rounded image-preview modal-playlist-preview"
+                                 alt="Vista previa portada playlist" />
                         </div>
 
                         <!-- Input para subir archivo -->
                         <input type="file" class="form-control bg-spotify-light border-0 text-white"
                                id="imagenPortadaCrear" name="imagenPortada" accept="image/*" />
-                        <small class="text-secondary">Formatos permitidos: JPG, PNG, GIF, AVIF. Tamaño máx: 5MB</small>
+                        <small class="text-secondary d-block mt-2">Formatos permitidos: JPG, PNG, GIF, AVIF. Tamaño máx: 5MB</small>
 
                         <!-- Campo oculto para la URL (se llena después de subir la imagen) -->
                         <input type="hidden" asp-for="CoverImageUrl" id="CoverImageUrl" />
                     </div>
                 </div>
                 <div class="modal-footer border-secondary">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn-spotify" id="btnGuardarPlaylist">
                         <i class="fas fa-save me-2"></i>Guardar
                     </button>
@@ -85,7 +84,7 @@
             reader.readAsDataURL(file);
         } else {
             //Si no hay archivo, vuelve al placeholder
-            document.getElementById('previewImagen').src = '/img/placeholder-playlist.jpg';
+            document.getElementById('previewImagen').src = '/img/placeholder-cover.png';
         }
     });
 </script>

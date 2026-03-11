@@ -21,6 +21,18 @@ namespace CostaRicaMusicPlayer.Controllers
         }
 
         [HttpGet]
+        public async Task<IActionResult> Detalle(int id)
+        {
+            var response = await _playlistServicio.ObtenerDetallePlaylistAsync(id);
+            if (!response.esCorrecto || response.Data is null)
+            {
+                return RedirectToAction(nameof(Index));
+            }
+
+            return View(response.Data);
+        }
+
+        [HttpGet]
         public async Task<IActionResult> ObtenerPlaylists()
         {
             var response = await _playlistServicio.ObtenerPlaylistsAsync();
@@ -42,9 +54,9 @@ namespace CostaRicaMusicPlayer.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> ActualizarPlaylist(PlaylistDto playlist, IFormFile? imagenPortada = null)
+        public async Task<IActionResult> ActualizarPlaylist(PlaylistDto playlist, IFormFile? imagenPortada = null, bool eliminarImagen = false)
         {
-            var response = await _playlistServicio.ActualizarPlaylistAsync(playlist, imagenPortada);
+            var response = await _playlistServicio.ActualizarPlaylistAsync(playlist, imagenPortada, eliminarImagen);
             return Json(response);
         }
 
@@ -52,6 +64,13 @@ namespace CostaRicaMusicPlayer.Controllers
         public async Task<IActionResult> EliminarPlaylist(int id)
         {
             var response = await _playlistServicio.EliminarPlaylistAsync(id);
+            return Json(response);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> EliminarCancionDePlaylist(int playlistId, int songId)
+        {
+            var response = await _playlistServicio.EliminarCancionDePlaylistAsync(playlistId, songId);
             return Json(response);
         }
     }

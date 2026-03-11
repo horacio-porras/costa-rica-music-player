@@ -1,0 +1,224 @@
+@using CostaRicaMusicBLL.Dtos
+@model PlaylistDetailDto
+
+@{
+    ViewData["Title"] = "Detalle playlist";
+
+    bool usaPortadaSeleccionada = !string.IsNullOrWhiteSpace(Model.CoverImageUrl)
+        && !Model.CoverImageUrl.Contains("placeholder");
+
+    string FormatearDuracion(int totalSegundos)
+    {
+        if (totalSegundos <= 0) return "0 min";
+
+        var horas = totalSegundos / 3600;
+        var minutos = (totalSegundos % 3600) / 60;
+        return horas > 0 ? $"{horas} h {minutos} min" : $"{minutos} min";
+    }
+
+    string FormatearDuracionCancion(int segundos)
+    {
+        if (segundos <= 0) return "0:00";
+        var minutos = segundos / 60;
+        var resto = segundos % 60;
+        return $"{minutos}:{resto:D2}";
+    }
+}
+
+<div class="playlist-detail-page">
+    <div class="playlist-detail-header">
+        <div class="playlist-detail-cover">
+            @if (usaPortadaSeleccionada)
+            {
+                <img src="@Model.CoverImageUrl"
+                     alt="@Model.Name"
+                     class="playlist-detail-cover-image"
+                     onerror="this.onerror=null; this.src='/img/placeholder-cover.png';" />
+            }
+            else
+            {
+                <div class="playlist-collage">
+                    @if (Model.HeaderCollageImages.Count > 0)
+                    {
+                        @for (int i = 0; i < 4; i++)
+                        {
+                            var src = i < Model.HeaderCollageImages.Count
+                                ? Model.HeaderCollageImages[i]
+                                : "/img/placeholder-cover.png";
+
+                            <img src="@src"
+                                 alt="thumbnail cancion @(i + 1)"
+                                 class="playlist-collage-item"
+                                 onerror="this.onerror=null; this.src='/img/placeholder-cover.png';" />
+                        }
+                    }
+                    else
+                    {
+                        <div class="playlist-collage-empty">
+                            <i class="fas fa-music"></i>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="playlist-detail-info">
+            <p class="playlist-detail-type mb-1">Playlist publica</p>
+            <h1 class="playlist-detail-title">@Model.Name</h1>
+            <p class="playlist-detail-meta mb-0">
+                <span>@Model.Username</span>
+                <span class="mx-2">-</span>
+                <span>@Model.SongCount canciones</span>
+                <span class="mx-2">-</span>
+                <span>@FormatearDuracion(Model.TotalDurationSeconds)</span>
+            </p>
+        </div>
+    </div>
+
+    <div class="playlist-detail-body">
+        <div class="playlist-detail-toolbar">
+            <a class="btn-playlist-back" asp-controller="Playlists" asp-action="Index">
+                <i class="fas fa-arrow-left me-2"></i>Volver
+            </a>
+        </div>
+
+        <div class="playlist-songs-table-wrapper">
+            <table class="table playlist-songs-table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">#</th>
+                        <th>Titulo</th>
+                        <th>Album</th>
+                        <th class="text-end" style="width: 90px;">
+                            <i class="far fa-clock"></i>
+                        </th>
+                        <th style="width: 44px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Songs.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center text-secondary py-4">
+                                Esta playlist no tiene canciones todavia.
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var cancion in Model.Songs)
+                        {
+                            <tr>
+                                <td class="text-secondary playlist-track-cell">
+                                    <span class="playlist-track-number">@cancion.TrackNumber</span>
+                                    <button type="button" class="playlist-track-play-btn" title="Reproducir @cancion.Title" aria-label="Reproducir @cancion.Title">
+                                        <i class="fas fa-play"></i>
+                                    </button>
+                                </td>
+                                <td>
+                                    <div class="playlist-song-title-cell">
+                                        <img src="@cancion.CoverImageUrl"
+                                             alt="@cancion.Title"
+                                             class="playlist-song-cover"
+                                             onerror="this.onerror=null; this.src='/img/placeholder-cover.png';" />
+                                        <div class="playlist-song-text">
+                                            <span class="playlist-song-title">@cancion.Title</span>
+                                            <span class="playlist-song-artist">@cancion.ArtistName</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-secondary">@cancion.AlbumTitle</td>
+                                <td class="text-end text-secondary">@FormatearDuracionCancion(cancion.DurationSeconds)</td>
+                                <td class="playlist-row-actions text-end">
+                                    <button type="button" class="playlist-more-btn" title="Mas opciones" aria-label="Mas opciones" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="fas fa-ellipsis-h"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end playlist-song-dropdown">
+                                        <li>
+                                            <button type="button"
+                                                    class="dropdown-item playlist-remove-song-option"
+                                                    data-playlist-id="@Model.PlaylistId"
+                                                    data-song-id="@cancion.SongId">
+                                                <i class="fas fa-trash me-2"></i>Eliminar de esta playlist
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        (function () {
+            document.addEventListener('click', async function (event) {
+                const btn = event.target.closest('.playlist-remove-song-option');
+                if (!btn) {
+                    return;
+                }
+
+                const playlistId = btn.getAttribute('data-playlist-id');
+                const songId = btn.getAttribute('data-song-id');
+                if (!playlistId || !songId) {
+                    return;
+                }
+
+                const confirmacion = await Swal.fire({
+                    title: 'Eliminar cancion',
+                    text: 'Se quitara esta cancion de la playlist.',
+                    icon: undefined,
+                    background: '#232323',
+                    color: '#f3f3f3',
+                    showCancelButton: true,
+                    reverseButtons: true,
+                    buttonsStyling: false,
+                    customClass: {
+                        popup: 'playlist-swal-popup',
+                        confirmButton: 'playlist-swal-confirm',
+                        cancelButton: 'playlist-swal-cancel'
+                    },
+                    confirmButtonText: 'Si, eliminar',
+                    cancelButtonText: 'Cancelar'
+                });
+
+                if (!confirmacion.isConfirmed) {
+                    return;
+                }
+
+                const body = new URLSearchParams({
+                    playlistId: playlistId,
+                    songId: songId
+                });
+
+                const response = await fetch('/Playlists/EliminarCancionDePlaylist', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                    },
+                    body
+                });
+
+                const result = await response.json();
+                if (result && result.esCorrecto) {
+                    window.location.reload();
+                    return;
+                }
+
+                await Swal.fire({
+                    title: 'No se pudo eliminar',
+                    text: (result && result.mensaje) ? result.mensaje : 'Ocurrio un error inesperado.',
+                    icon: 'error',
+                    background: '#232323',
+                    color: '#f3f3f3',
+                    confirmButtonColor: '#1db954'
+                });
+            });
+        })();
+    </script>
+}

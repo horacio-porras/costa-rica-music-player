@@ -2,7 +2,7 @@
 @model PlaylistDto
 
 <div class="modal fade" id="modalEditarPlaylist" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-playlist-create">
         <div class="modal-content bg-dark text-white border-0">
             <div class="modal-header border-secondary">
                 <h5 class="modal-title">
@@ -14,43 +14,48 @@
             <form id="formEditarPlaylist" asp-action="ActualizarPlaylist" method="post" enctype="multipart/form-data">
                 <input type="hidden" asp-for="PlaylistId" id="PlaylistId" />
 
-                <div class="modal-body">
-                    <div class="mb-3">
+                <div class="modal-body modal-playlist-create-body">
+                    <div class="mb-3 modal-playlist-group">
                         <label asp-for="Name" class="form-label text-white">Nombre de la playlist</label>
                         <input asp-for="Name" class="form-control bg-spotify-light border-0 text-white"
                                id="EditPlaylistName" placeholder="Ej: Éxitos de Costa Rica" required />
                         <span asp-validation-for="Name" class="text-danger small"></span>
                     </div>
 
-                    <div class="mb-3">
+                    <div class="mb-3 modal-playlist-group">
                         <label asp-for="UserId" class="form-label text-white">Usuario ID</label>
                         <input asp-for="UserId" class="form-control bg-spotify-light border-0 text-white"
                                id="EditUserId" placeholder="ID del usuario" required />
                         <span asp-validation-for="UserId" class="text-danger small"></span>
                     </div>
 
-                    <div class="mb-3">
+                    <div class="mb-2 modal-playlist-group">
                         <label class="form-label text-white">Imagen de portada</label>
 
                         <!-- Preview de la imagen actual -->
                         <div class="image-preview-container mb-3 text-center">
-                            <img id="previewImagenActual" src=""
-                                 class="rounded image-preview mb-2"
-                                 style="width: 150px; height: 150px; object-fit: cover; border: 2px solid #404040;" />
-                            <p class="text-secondary small" id="nombreImagenActual"></p>
+                            <div class="modal-playlist-preview-wrap mx-auto">
+                                <img id="previewImagenActual" src=""
+                                     class="rounded image-preview modal-playlist-preview"
+                                     alt="Vista previa portada playlist" />
+                                <button type="button" id="btnQuitarImagen" class="playlist-preview-remove-btn d-none" title="Quitar imagen" aria-label="Quitar imagen">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <p class="text-secondary small mt-2 mb-0" id="nombreImagenActual"></p>
                         </div>
 
                         <label class="form-label text-white">Seleccionar nueva imagen (opcional)</label>
                         <input type="file" class="form-control bg-spotify-light border-0 text-white"
                                id="imagenPortadaEditar" name="imagenPortada" accept="image/*" />
-                        <small class="text-secondary">Formatos permitidos: JPG, PNG, GIF, AVIF. Tamaño máx: 5MB</small>
+                        <small class="text-secondary d-block mt-2">Formatos permitidos: JPG, PNG, GIF, AVIF. Tamaño máx: 5MB</small>
 
                         <!-- Campo oculto para la URL actual -->
                         <input type="hidden" asp-for="CoverImageUrl" id="EditCoverImageUrl" />
+                        <input type="hidden" id="EliminarImagen" name="eliminarImagen" value="false" />
                     </div>
                 </div>
                 <div class="modal-footer border-secondary">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn-spotify" id="btnEditarPlaylist">
                         <i class="fas fa-save me-2"></i>Actualizar
                     </button>
@@ -61,60 +66,136 @@
 </div>
 
 <script>
-    //Script para manejar la edición de imagen
-    $(document).ready(function() {
-        //Cuando se abre el modal de edición
-        $('#modalEditarPlaylist').on('show.bs.modal', function() {
-            //Resetea el estado
-            $('#imagenPortadaEditar').val('');
-        });
+    (function () {
+        const modalEditar = document.getElementById('modalEditarPlaylist');
+        const inputImagen = document.getElementById('imagenPortadaEditar');
+        const previewImagen = document.getElementById('previewImagenActual');
+        const nombreImagen = document.getElementById('nombreImagenActual');
+        const btnQuitarImagen = document.getElementById('btnQuitarImagen');
+        const eliminarImagenInput = document.getElementById('EliminarImagen');
 
-        //Preview de nueva imagen (reemplaza la actual visualmente)
-        $('#imagenPortadaEditar').change(function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                //Valida tamaño (5MB)
-                if (file.size > 5 * 1024 * 1024) {
-                    alert('La imagen no puede ser mayor a 5MB');
-                    this.value = '';
-                    return;
-                }
+        if (!inputImagen || !previewImagen || !nombreImagen) {
+            return;
+        }
 
-                //Valida tipo
-                const tiposPermitidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/avif'];
-                if (!tiposPermitidos.includes(file.type)) {
-                    alert('Tipo de archivo no permitido. Use JPG, PNG, GIF o AVIF');
-                    this.value = '';
-                    return;
-                }
-
-                //Muestra preview
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    $('#previewImagenActual').attr('src', e.target.result);
-                    $('#nombreImagenActual').text(file.name);
-                }
-                reader.readAsDataURL(file);
+        function esPlaceholder(ruta) {
+            if (!ruta) {
+                return true;
             }
-        });
-    });
+            return ruta.includes('placeholder-cover')
+                || ruta.includes('placeholder-playlist')
+                || ruta.includes('placeholder-album');
+        }
 
-    //Función para cargar los datos en el modal de edición
-    function cargarPlaylistEnModal(playlist) {
-        $('#PlaylistId').val(playlist.playlistId);
-        $('#EditPlaylistName').val(playlist.name);
-        $('#EditUserId').val(playlist.userId);
-        $('#EditCoverImageUrl').val(playlist.coverImageUrl);
+        function mostrarBotonQuitar(mostrar) {
+            if (!btnQuitarImagen) {
+                return;
+            }
+            btnQuitarImagen.classList.toggle('d-none', !mostrar);
+        }
+
+        // Resetea input de archivo cada vez que se abre el modal
+        if (modalEditar) {
+            modalEditar.addEventListener('show.bs.modal', function () {
+                inputImagen.value = '';
+                eliminarImagenInput.value = 'false';
+                if (btnQuitarImagen) {
+                    btnQuitarImagen.classList.remove('active');
+                }
+                mostrarBotonQuitar(!esPlaceholder(previewImagen.src));
+            });
+        }
+
+        // Preview de nueva imagen (reemplaza la actual visualmente)
+        inputImagen.addEventListener('change', function (event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) {
+                return;
+            }
+
+            // Valida tamaño (5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('La imagen no puede ser mayor a 5MB');
+                inputImagen.value = '';
+                return;
+            }
+
+            // Valida tipo
+            const tiposPermitidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/avif'];
+            if (!tiposPermitidos.includes(file.type)) {
+                alert('Tipo de archivo no permitido. Use JPG, PNG, GIF o AVIF');
+                inputImagen.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function (readerEvent) {
+                previewImagen.src = readerEvent.target.result;
+                nombreImagen.textContent = file.name;
+                eliminarImagenInput.value = 'false';
+                if (btnQuitarImagen) {
+                    btnQuitarImagen.classList.remove('active');
+                }
+                mostrarBotonQuitar(true);
+            };
+            reader.readAsDataURL(file);
+        });
+
+        if (btnQuitarImagen) {
+            btnQuitarImagen.addEventListener('click', function () {
+                inputImagen.value = '';
+                previewImagen.src = '/img/placeholder-cover.png';
+                nombreImagen.textContent = 'Se eliminara al guardar';
+                eliminarImagenInput.value = 'true';
+                btnQuitarImagen.classList.add('active');
+                mostrarBotonQuitar(false);
+            });
+        }
+    })();
+
+    //Función global para cargar los datos en el modal de edición
+    window.cargarPlaylistEnModal = function (playlist) {
+        document.getElementById('PlaylistId').value = playlist.playlistId ?? '';
+        document.getElementById('EditPlaylistName').value = playlist.name ?? '';
+        document.getElementById('EditUserId').value = playlist.userId ?? '';
+        document.getElementById('EditCoverImageUrl').value = playlist.coverImageUrl ?? '';
+        document.getElementById('EliminarImagen').value = 'false';
 
         //Muestra la imagen actual
+        const previewImagen = document.getElementById('previewImagenActual');
+        const nombreImagen = document.getElementById('nombreImagenActual');
+        const btnQuitarImagen = document.getElementById('btnQuitarImagen');
+        const esPlaceholder = (ruta) => !ruta
+            || ruta.includes('placeholder-cover')
+            || ruta.includes('placeholder-playlist')
+            || ruta.includes('placeholder-album');
+
+        const toggleBotonQuitar = (mostrar) => {
+            if (!btnQuitarImagen) return;
+            btnQuitarImagen.classList.toggle('d-none', !mostrar);
+        };
+
+        if (btnQuitarImagen) {
+            btnQuitarImagen.classList.remove('active');
+        }
+
         if (playlist.coverImageUrl) {
-            $('#previewImagenActual').attr('src', playlist.coverImageUrl);
+            const esPlaceholderAntiguo = playlist.coverImageUrl.includes('placeholder-playlist')
+                || playlist.coverImageUrl.includes('placeholder-album');
+            const rutaNormalizada = playlist.coverImageUrl.replace(/\\/g, '/');
+            const previewSrc = esPlaceholderAntiguo
+                ? '/img/placeholder-cover.png'
+                : (rutaNormalizada.startsWith('/') ? rutaNormalizada : `/${rutaNormalizada}`);
+
+            previewImagen.src = previewSrc;
             //Extrae solo el nombre del archivo para mostrar
             const nombreArchivo = playlist.coverImageUrl.split('/').pop();
-            $('#nombreImagenActual').text(nombreArchivo);
+            nombreImagen.textContent = nombreArchivo;
+            toggleBotonQuitar(!esPlaceholder(previewSrc));
         } else {
-            $('#previewImagenActual').attr('src', '/img/placeholder-playlist.jpg');
-            $('#nombreImagenActual').text('Sin imagen');
+            previewImagen.src = '/img/placeholder-cover.png';
+            nombreImagen.textContent = 'Sin imagen';
+            toggleBotonQuitar(false);
         }
-    }
+    };
 </script>

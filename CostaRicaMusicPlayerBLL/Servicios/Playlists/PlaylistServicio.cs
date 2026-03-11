@@ -2,11 +2,14 @@ using AutoMapper;
 using CostaRicaMusicBLL;
 using CostaRicaMusicBLL.Dtos;
 using CostaRicaMusicDAL.Repositorios.Generico;
+using CostaRicaMusicDAL.Data;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
+using Microsoft.EntityFrameworkCore;
+using System.Linq;
 
 namespace CostaRicaMusicBLL.Servicios.Playlists
 {
@@ -15,17 +18,20 @@ namespace CostaRicaMusicBLL.Servicios.Playlists
         private readonly IMapper _mapper;
         private readonly IRepositorioGenerico<CostaRicaMusicDAL.Entidades.Playlist> _repositorioGenerico;
         private readonly IHostEnvironment _hostEnvironment;
+        private readonly CostaRicaMusicDbContext _context;
 
         public PlaylistServicio(IMapper mapper,
             IRepositorioGenerico<CostaRicaMusicDAL.Entidades.Playlist> repositorioGenerico,
-            IHostEnvironment hostEnvironment)
+            IHostEnvironment hostEnvironment,
+            CostaRicaMusicDbContext context)
         {
             _mapper = mapper;
             _repositorioGenerico = repositorioGenerico;
             _hostEnvironment = hostEnvironment;
+            _context = context;
         }
 
-        public async Task<CustomResponse<PlaylistDto>> ActualizarPlaylistAsync(PlaylistDto playlistDto, IFormFile? imagenPortada = null)
+        public async Task<CustomResponse<PlaylistDto>> ActualizarPlaylistAsync(PlaylistDto playlistDto, IFormFile? imagenPortada = null, bool eliminarImagen = false)
         {
             var response = new CustomResponse<PlaylistDto>();
 
@@ -47,7 +53,7 @@ namespace CostaRicaMusicBLL.Servicios.Playlists
                 return response;
             }
 
-            // Procesar nueva imagen si viene
+            // Procesar nueva imagen si viene (prioridad mas alta)
             if (imagenPortada != null && imagenPortada.Length > 0)
             {
                 // Eliminar imagen anterior si no es placeholder
@@ -59,6 +65,17 @@ namespace CostaRicaMusicBLL.Servicios.Playlists
 
                 // Guardar nueva imagen
                 playlistDto.CoverImageUrl = await GuardarImagenAsync(imagenPortada);
+            }
+            else if (eliminarImagen)
+            {
+                // Eliminar imagen actual y dejar placeholder
+                if (!string.IsNullOrEmpty(playlistExistente.CoverImageUrl) &&
+                    !playlistExistente.CoverImageUrl.Contains("placeholder"))
+                {
+                    await EliminarImagenAsync(playlistExistente.CoverImageUrl);
+                }
+
+                playlistDto.CoverImageUrl = "/img/placeholder-cover.png";
             }
             else
             {
@@ -113,7 +130,7 @@ namespace CostaRicaMusicBLL.Servicios.Playlists
             else
             {
                 // Si no hay imagen, usar placeholder
-                playlistDto.CoverImageUrl = "/img/placeholder-playlist.jpg";
+                playlistDto.CoverImageUrl = "/img/placeholder-cover.png";
             }
 
             // Mapear DTO a entidad
@@ -195,9 +212,154 @@ namespace CostaRicaMusicBLL.Servicios.Playlists
         public async Task<CustomResponse<List<PlaylistDto>>> ObtenerPlaylistsAsync()
         {
             var response = new CustomResponse<List<PlaylistDto>>();
-            var playlists = await _repositorioGenerico.ObtenerTodosAsync();
-            response.Data = _mapper.Map<List<PlaylistDto>>(playlists);
+
+            var playlists = await _context.Playlists
+                .AsNoTracking()
+                .Include(p => p.PlaylistSongs)
+                    .ThenInclude(ps => ps.Song)
+                        .ThenInclude(s => s.Album)
+                .ToListAsync();
+
+            response.Data = playlists.Select(p => new PlaylistDto
+            {
+                PlaylistId = p.PlaylistId,
+                Name = p.Name,
+                UserId = p.UserId,
+                CoverImageUrl = p.CoverImageUrl,
+                SongCount = p.PlaylistSongs.Count,
+                ThumbnailImages = p.PlaylistSongs
+                    .OrderBy(ps => ps.AddedAt)
+                    .Select(ps => NormalizarRutaImagen(ps.Song?.Album?.CoverImageUrl)
+                        ?? NormalizarRutaImagen(ps.Song?.CoverImageUrl)
+                        ?? "/img/placeholder-cover.png")
+                    .Take(4)
+                    .ToList()
+            }).ToList();
+
             return response;
+        }
+
+        public async Task<CustomResponse<PlaylistDetailDto>> ObtenerDetallePlaylistAsync(int id)
+        {
+            var response = new CustomResponse<PlaylistDetailDto>();
+
+            var playlist = await _context.Playlists
+                .AsNoTracking()
+                .Include(p => p.User)
+                .Include(p => p.PlaylistSongs)
+                    .ThenInclude(ps => ps.Song)
+                        .ThenInclude(s => s.Album)
+                            .ThenInclude(a => a.Artist)
+                .Include(p => p.PlaylistSongs)
+                    .ThenInclude(ps => ps.Song)
+                        .ThenInclude(s => s.SongArtists)
+                            .ThenInclude(sa => sa.Artist)
+                .FirstOrDefaultAsync(p => p.PlaylistId == id);
+
+            if (playlist is null)
+            {
+                response.esCorrecto = false;
+                response.mensaje = "La playlist no existe.";
+                response.codigoStatus = 404;
+                return response;
+            }
+
+            var canciones = playlist.PlaylistSongs
+                .OrderBy(ps => ps.AddedAt)
+                .Select((ps, index) => new PlaylistSongDetailDto
+                {
+                    SongId = ps.SongId,
+                    TrackNumber = index + 1,
+                    Title = ps.Song?.Title ?? "Sin titulo",
+                    ArtistName = ps.Song?.Album?.Artist?.Name
+                        ?? ps.Song?.SongArtists?.FirstOrDefault()?.Artist?.Name
+                        ?? "Artista desconocido",
+                    AlbumTitle = string.IsNullOrWhiteSpace(ps.Song?.Album?.Title) ? "Single" : ps.Song.Album.Title,
+                    DurationSeconds = ps.Song?.Duration ?? 0,
+                    CoverImageUrl = NormalizarRutaImagen(ps.Song?.Album?.CoverImageUrl)
+                        ?? NormalizarRutaImagen(ps.Song?.CoverImageUrl)
+                        ?? "/img/placeholder-cover.png"
+                })
+                .ToList();
+
+            var imagenesHeader = canciones
+                .Select(c => c.CoverImageUrl)
+                .Where(url => !string.IsNullOrWhiteSpace(url))
+                .Take(4)
+                .ToList();
+
+            response.Data = new PlaylistDetailDto
+            {
+                PlaylistId = playlist.PlaylistId,
+                Name = playlist.Name,
+                UserId = playlist.UserId,
+                Username = playlist.User?.Username ?? $"Usuario {playlist.UserId}",
+                CoverImageUrl = playlist.CoverImageUrl,
+                SongCount = canciones.Count,
+                TotalDurationSeconds = canciones.Sum(c => c.DurationSeconds),
+                HeaderCollageImages = imagenesHeader,
+                Songs = canciones
+            };
+
+            return response;
+        }
+
+        public async Task<CustomResponse<bool>> EliminarCancionDePlaylistAsync(int playlistId, int songId)
+        {
+            var response = new CustomResponse<bool>();
+
+            if (playlistId <= 0 || songId <= 0)
+            {
+                response.esCorrecto = false;
+                response.mensaje = "Datos no validos para eliminar la cancion de la playlist.";
+                response.codigoStatus = 400;
+                response.Data = false;
+                return response;
+            }
+
+            var relacion = await _context.PlaylistSongs
+                .FirstOrDefaultAsync(ps => ps.PlaylistId == playlistId && ps.SongId == songId);
+
+            if (relacion is null)
+            {
+                response.esCorrecto = false;
+                response.mensaje = "La cancion no existe dentro de la playlist.";
+                response.codigoStatus = 404;
+                response.Data = false;
+                return response;
+            }
+
+            _context.PlaylistSongs.Remove(relacion);
+            await _context.SaveChangesAsync();
+
+            response.esCorrecto = true;
+            response.Data = true;
+            response.mensaje = "Cancion eliminada de la playlist.";
+            return response;
+        }
+
+        private static string? NormalizarRutaImagen(string? ruta)
+        {
+            if (string.IsNullOrWhiteSpace(ruta))
+            {
+                return null;
+            }
+
+            // Permite URLs absolutas externas (http/https)
+            if (Uri.TryCreate(ruta, UriKind.Absolute, out _))
+            {
+                return ruta;
+            }
+
+            var rutaNormalizada = ruta.Replace('\\', '/').Trim();
+
+            // Si viene como "img/albums/..." convertir a "/img/albums/..."
+            if (!rutaNormalizada.StartsWith('/'))
+            {
+                rutaNormalizada = "/" + rutaNormalizada;
+            }
+
+            return rutaNormalizada;
         }
 
         // Métodos privados para manejo de imágenes

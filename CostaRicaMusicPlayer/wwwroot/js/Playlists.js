@@ -19,6 +19,18 @@
             });
 
             // Delegación de eventos para botones de acción
+            $(document).on('click', '.playlist-card', function (e) {
+                // Ignora clics en acciones y controles internos
+                if ($(e.target).closest('.playlist-actions, .playlist-action-btn, button, a, input, label').length) {
+                    return;
+                }
+
+                const id = $(this).data('playlist-id');
+                if (id) {
+                    Playlists.verPlaylist(id);
+                }
+            });
+
             $(document).on('click', '.playlist-card .btn-ver', function () {
                 const id = $(this).closest('.playlist-card').data('playlist-id');
                 Playlists.verPlaylist(id);
@@ -37,14 +49,32 @@
             // Limpiar modal al cerrar
             $('#modalCrearPlaylist').on('hidden.bs.modal', function () {
                 $('#formCrearPlaylist')[0].reset();
-                $('#previewImagen').attr('src', '/img/placeholder-playlist.jpg');
+                $('#previewImagen').attr('src', '/img/placeholder-cover.png');
             });
 
             $('#modalEditarPlaylist').on('hidden.bs.modal', function () {
                 $('#formEditarPlaylist')[0].reset();
-                $('#previewImagenActual').attr('src', '/img/placeholder-playlist.jpg');
+                $('#previewImagenActual').attr('src', '/img/placeholder-cover.png');
                 $('#nombreImagenActual').text('Sin imagen');
             });
+        },
+
+        normalizarCoverImage(url) {
+            if (!url || url.includes('placeholder-playlist') || url.includes('placeholder-album')) {
+                return '/img/placeholder-cover.png';
+            }
+
+            const normalizada = url.replace(/\\/g, '/');
+            return normalizada.startsWith('/') ? normalizada : `/${normalizada}`;
+        },
+
+        tienePortadaPersonalizada(url) {
+            if (!url) {
+                return false;
+            }
+            return !url.includes('placeholder-playlist')
+                && !url.includes('placeholder-album')
+                && !url.includes('placeholder-cover');
         },
 
         cargarPlaylists() {
@@ -75,16 +105,31 @@
             }
 
             playlists.forEach(p => {
-                // Determinar la imagen a mostrar
-                let coverImage = p.coverImageUrl || '/img/placeholder-album.avif';
+                const tienePortada = this.tienePortadaPersonalizada(p.coverImageUrl);
+                const coverImage = this.normalizarCoverImage(p.coverImageUrl);
+                const thumbs = Array.isArray(p.thumbnailImages) ? p.thumbnailImages : [];
+                const usarCollage = !tienePortada && (p.songCount > 0) && thumbs.length > 0;
+                const collageItems = [0, 1, 2, 3]
+                    .map(i => this.normalizarCoverImage(thumbs[i] || '/img/placeholder-cover.png'))
+                    .map(src => `
+                        <img src="${src}"
+                             class="playlist-cover-collage-item"
+                             alt="${p.name}"
+                             onerror="this.onerror=null; this.src='/img/placeholder-cover.png';" />
+                    `)
+                    .join('');
+
+                const coverMarkup = (tienePortada || !usarCollage)
+                    ? `<img src="${coverImage}" 
+                            alt="${p.name}" 
+                            class="playlist-cover-img"
+                            onerror="this.onerror=null; this.src='/img/placeholder-cover.png';" />`
+                    : `<div class="playlist-cover-collage">${collageItems}</div>`;
 
                 const card = `
                     <div class="playlist-card" data-playlist-id="${p.playlistId}">
                         <div class="playlist-card-cover">
-                            <img src="${coverImage}" 
-                                 alt="${p.name}" 
-                                 class="playlist-cover-img"
-                                 onerror="this.onerror=null; this.src='/img/placeholder-album.avif';" />
+                            ${coverMarkup}
                             <div class="playlist-actions">
                                 <button class="playlist-action-btn btn-ver" title="Ver playlist">
                                     <i class="fas fa-play"></i>
@@ -156,7 +201,7 @@
                         $('#EditPlaylistName').val(data.name);
                         $('#EditUserId').val(data.userId);
                         $('#EditCoverImageUrl').val(data.coverImageUrl);
-                        $('#previewImagenActual').attr('src', data.coverImageUrl || '/img/placeholder-playlist.jpg');
+                        $('#previewImagenActual').attr('src', this.normalizarCoverImage(data.coverImageUrl));
                     }
 
                     $('#modalEditarPlaylist').modal('show');
@@ -202,8 +247,36 @@
             window.location.href = `/Playlists/Detalle/${id}`;
         },
 
-        eliminarPlaylist(id) {
-            if (!confirm('¿Estás seguro de eliminar esta playlist? Esta acción no se puede deshacer.')) {
+        async eliminarPlaylist(id) {
+            let confirmado = false;
+
+            if (typeof Swal !== 'undefined') {
+                const result = await Swal.fire({
+                    title: 'Eliminar playlist',
+                    text: 'Esta accion no se puede deshacer.',
+                    icon: undefined,
+                    background: '#232323',
+                    color: '#f3f3f3',
+                    showCancelButton: true,
+                    reverseButtons: true,
+                    buttonsStyling: false,
+                    customClass: {
+                        popup: 'playlist-swal-popup',
+                        confirmButton: 'playlist-swal-confirm',
+                        cancelButton: 'playlist-swal-cancel'
+                    },
+                    confirmButtonText: 'Si, eliminar',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#e74c3c',
+                    cancelButtonColor: '#3f3f3f'
+                });
+                confirmado = !!result.isConfirmed;
+            } else {
+                alert('No se pudo cargar el dialogo de confirmacion. Recarga la pagina e intentalo de nuevo.');
+                return;
+            }
+
+            if (!confirmado) {
                 return;
             }
 
@@ -216,11 +289,34 @@
                         this.cargarPlaylists();
                         this.mostrarNotificacion('Playlist eliminada correctamente');
                     } else {
-                        alert(response.mensaje || 'Error al eliminar la playlist');
+                        const mensaje = response.mensaje || 'Error al eliminar la playlist';
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                title: 'No se pudo eliminar',
+                                text: mensaje,
+                                icon: 'error',
+                                background: '#232323',
+                                color: '#f3f3f3',
+                                confirmButtonColor: '#1db954'
+                            });
+                        } else {
+                            alert(mensaje);
+                        }
                     }
                 },
                 error: () => {
-                    alert('Error de conexión al servidor');
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            title: 'Error de conexion',
+                            text: 'No se pudo conectar con el servidor.',
+                            icon: 'error',
+                            background: '#232323',
+                            color: '#f3f3f3',
+                            confirmButtonColor: '#1db954'
+                        });
+                    } else {
+                        alert('Error de conexión al servidor');
+                    }
                 }
             });
         },
