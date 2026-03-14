@@ -129,10 +129,16 @@ namespace CostaRicaMusicBLL.Servicios.Songs
         {
             var response = new CustomResponse<List<CostaRicaMusicBLL.Dtos.SongDetailDto>>();
 
-            var songs = await _context.Songs
+            // Load entities into memory so we can assemble comma-separated artist names for songs with multiple artists
+            var songEntities = await _context.Songs
                 .Include(s => s.Album)
                     .ThenInclude(a => a.Artist)
-                .Select(s => new CostaRicaMusicBLL.Dtos.SongDetailDto
+                .Include(s => s.SongArtists)
+                    .ThenInclude(sa => sa.Artist)
+                .ToListAsync();
+
+            var songs = songEntities.Select(s =>
+                new CostaRicaMusicBLL.Dtos.SongDetailDto
                 {
                     SongId = s.SongId,
                     Title = s.Title,
@@ -141,14 +147,33 @@ namespace CostaRicaMusicBLL.Servicios.Songs
                     AlbumId = s.AlbumId,
                     AlbumTitle = s.Album != null ? s.Album.Title : null,
                     AlbumCoverImageUrl = s.Album != null ? s.Album.CoverImageUrl : null,
-                    CoverImageUrl = s.Album != null ? s.Album.CoverImageUrl : null,
+                    // Prefer an explicit song cover if present; otherwise fall back to album cover
+                    CoverImageUrl = s.CoverImageUrl != null ? s.CoverImageUrl : (s.Album != null ? s.Album.CoverImageUrl : null),
                     AlbumReleaseYear = s.Album != null ? s.Album.ReleaseYear : null,
-                    ArtistName = s.Album != null && s.Album.Artist != null ? s.Album.Artist.Name : null,
-                    ArtistImageUrl = s.Album != null && s.Album.Artist != null ? s.Album.Artist.ImageUrl : null,
-                    ArtistId = s.Album != null && s.Album.Artist != null ? s.Album.Artist.ArtistId : (int?)null,
-                    ArtistBiography = s.Album != null && s.Album.Artist != null ? s.Album.Artist.Biography : null
+                    // If the song has an album and that album has an artist, use it; otherwise join all artists linked via SongArtists
+                    ArtistName = s.Album != null && s.Album.Artist != null
+                        ? s.Album.Artist.Name
+                        : (s.SongArtists != null && s.SongArtists.Any()
+                            ? string.Join(", ", s.SongArtists.Select(sa => sa.Artist?.Name).Where(n => !string.IsNullOrEmpty(n)))
+                            : null),
+                    // For image choose album artist image if available, otherwise the first non-empty artist image from SongArtists
+                    ArtistImageUrl = s.Album != null && s.Album.Artist != null
+                        ? s.Album.Artist.ImageUrl
+                        : (s.SongArtists != null
+                            ? s.SongArtists.Select(sa => sa.Artist?.ImageUrl).FirstOrDefault(img => !string.IsNullOrEmpty(img))
+                            : null),
+                    ArtistId = s.Album != null && s.Album.Artist != null
+                        ? s.Album.Artist.ArtistId
+                        : (s.SongArtists != null && s.SongArtists.Any()
+                            ? s.SongArtists.Select(sa => (int?)sa.Artist.ArtistId).FirstOrDefault()
+                            : (int?)null),
+                    ArtistBiography = s.Album != null && s.Album.Artist != null
+                        ? s.Album.Artist.Biography
+                        : (s.SongArtists != null
+                            ? s.SongArtists.Select(sa => sa.Artist?.Biography).FirstOrDefault(b => !string.IsNullOrEmpty(b))
+                            : null)
                 })
-                .ToListAsync();
+                .ToList();
 
             response.Data = songs;
             return response;

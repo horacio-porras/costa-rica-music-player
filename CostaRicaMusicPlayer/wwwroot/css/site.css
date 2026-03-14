@@ -170,9 +170,7 @@ main {
 
 /* --- Módulo de música tipo Spotify --- */
 
-.music-page {
-    /* Ya no necesitamos padding aquí, se aplica arriba */
-}
+
 
 .music-layout {
     align-items: flex-start;
@@ -276,6 +274,31 @@ main {
     border-radius: 0.5rem;
     overflow: hidden;
     margin-bottom: 0.75rem;
+    position: relative;
+}
+
+.music-card-play-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.music-card-play-overlay i {
+    color: #1db954;
+    font-size: 3rem;
+    filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));
+}
+
+.music-card:hover .music-card-play-overlay {
+    opacity: 1;
 }
 
     .music-card-cover img {
@@ -440,19 +463,13 @@ main {
     text-overflow: ellipsis;
 }
 
+/* Estilos generales para modales (afecta a TODOS) */
 .modal-content {
     background: #181818;
     border-radius: 12px;
 }
 
-.modal-header {
-    border-bottom: 1px solid #282828;
-}
-
-.modal-body {
-    color: #b3b3b3;
-}
-
+/*
 #artistSongsList .list-group-item {
     background: transparent;
     color: #fff;
@@ -486,6 +503,7 @@ main {
         background: #282828;
     }
 
+*/
 /* Scrollbars oscuros para listas de artistas y álbumes */
 .artists-list,
 .albums-list {
@@ -613,6 +631,39 @@ body {
         background: rgba(255, 255, 255, 0.1);
         transform: scale(1.1);
     }
+
+/* Barra de progreso del reproductor */
+.player-progress-wrap {
+    min-width: 120px;
+    max-width: 280px;
+}
+
+.player-time-current, .player-time-total {
+    min-width: 2.2rem;
+    font-size: 0.75rem;
+}
+
+.player-progress-bar {
+    flex: 1;
+    height: 4px;
+    background: #555;
+    border-radius: 2px;
+    cursor: pointer;
+    margin: 0 0.5rem;
+    overflow: hidden;
+}
+
+.player-progress-bar:hover {
+    height: 6px;
+    background: #666;
+}
+
+.player-progress-fill {
+    height: 100%;
+    background: #1db954;
+    width: 0%;
+    transition: width 0.1s linear;
+}
 
 /* Botón de play especial */
 .play-btn {
@@ -1491,6 +1542,10 @@ input[type="file"].form-control::-webkit-file-upload-button:hover {
 
 .playlist-songs-table tbody tr:hover {
     background: rgba(255, 255, 255, 0.05);
+}
+
+.playlist-song-row {
+    cursor: pointer;
 }
 
 .playlist-track-cell {

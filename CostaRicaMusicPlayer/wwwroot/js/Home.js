@@ -4,6 +4,7 @@
         artists: [],
         albums: [],
         playlists: [],
+        recommendedSongs: [],
 
         init() {
             this.cargarDatos();
@@ -19,6 +20,17 @@
                 const artistId = el.data('artist-id') || el.closest('.artist-card').data('artist-id');
                 if (!artistId) return;
                 self.mostrarArtist(artistId);
+            });
+
+            // Reproducir canción al hacer clic en la card (excepto en artista/álbum)
+            $(document).on('click', '#recommendedSongsGrid .music-card', function(e) {
+                if ($(e.target).closest('.music-card-artist, .music-card-album').length) return;
+                const card = $(this);
+                const songId = card.data('song-id');
+                if (songId && window.Player) {
+                    const song = self.recommendedSongs.find(s => s.songId == songId);
+                    if (song) window.Player.reproducir(song, self.recommendedSongs);
+                }
             });
 
             // Delegación de eventos para álbumes (en cards y en listas)
@@ -126,31 +138,36 @@
             const grid = $('#recommendedSongsGrid');
             grid.empty();
 
-            const cancionesRandom = this.obtenerElementosAleatorios(this.songs, 8);
+            this.recommendedSongs = this.obtenerElementosAleatorios(this.songs, 8);
 
-            if (cancionesRandom.length === 0) {
+            if (this.recommendedSongs.length === 0) {
                 grid.append('<div class="text-secondary">No hay canciones disponibles</div>');
                 return;
             }
 
-            cancionesRandom.forEach(song => {
+            this.recommendedSongs.forEach(song => {
                 const cover = song.coverImageUrl || song.albumCoverImageUrl || '/img/placeholder-album.avif';
                 const artistName = song.artistName || 'Artista desconocido';
 
                 const albumTitle = song.albumTitle || '';
                 const albumId = song.albumId || '';
 
+                // Construir el HTML del subtítulo: mostrar punto y álbum sólo si existe albumTitle
+                let subtitleHtml = `<span class="music-card-artist" data-artist-id="${song.artistId || ''}" title="${artistName}">${artistName}</span>`;
+                if (albumTitle && albumTitle.length > 0) {
+                    subtitleHtml += ` <span class="music-card-dot">•</span> <span class="music-card-album" data-album-id="${albumId}" title="${albumTitle}">${albumTitle}</span>`;
+                }
+
                 const card = `
-                    <div class="music-card">
+                    <div class="music-card" data-song-id="${song.songId}">
                         <div class="music-card-cover">
+                            <div class="music-card-play-overlay"><i class="fas fa-play-circle"></i></div>
                             <img src="${cover}" alt="${song.title}" onerror="this.src='/img/placeholder-album.avif';" />
                         </div>
                         <div class="music-card-body">
                             <div class="music-card-title" title="${song.title}">${song.title}</div>
                             <div class="music-card-subtitle">
-                                <span class="music-card-artist" data-artist-id="${song.artistId || ''}" title="${artistName}">${artistName}</span>
-                                <span class="music-card-dot">•</span>
-                                <span class="music-card-album" data-album-id="${albumId}" title="${albumTitle}">${albumTitle}</span>
+                                ${subtitleHtml}
                             </div>
                         </div>
                         <div class="music-card-duration">

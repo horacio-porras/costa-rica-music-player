@@ -3,6 +3,7 @@
         songs: [],
         artists: [],
         albums: [],
+        currentDisplayedSongs: [],
 
         init() {
             this.cargarSongs();
@@ -24,6 +25,16 @@
                 const artistId = el.data('artist-id') || el.closest('.artist-card').data('artist-id');
                 if (!artistId) return;
                 self.mostrarArtist(artistId);
+            });
+
+            $(document).on('click', '.music-card', function(e) {
+                if ($(e.target).closest('.music-card-artist, .music-card-album').length) return;
+                const card = $(this);
+                const songId = card.data('song-id');
+                if (songId && window.Player) {
+                    const song = self.currentDisplayedSongs.find(s => s.songId == songId);
+                    if (song) window.Player.reproducir(song, self.currentDisplayedSongs);
+                }
             });
 
             $(document).on('click', '.album-card, .music-card-album, .artist-album-item', (e) => {
@@ -90,6 +101,7 @@
         },
 
         pintarSongs(songs) {
+            this.currentDisplayedSongs = songs || [];
             const grid = $('#songsGrid');
             grid.empty();
 
@@ -101,17 +113,22 @@
                 const albumTitle = song.albumTitle || '';
                 const albumId = song.albumId || '';
 
+                // Construir el HTML del subtítulo: mostrar punto y álbum sólo si existe albumTitle
+                let subtitleHtml = `<span class="music-card-artist" data-artist-id="${song.artistId || ''}" title="${artistName}">${artistName}</span>`;
+                if (albumTitle && albumTitle.length > 0) {
+                    subtitleHtml += ` <span class="music-card-dot">•</span> <span class="music-card-album" data-album-id="${albumId}" title="${albumTitle}">${albumTitle}</span>`;
+                }
+
                 const card = `
-                    <div class="music-card">
+                    <div class="music-card" data-song-id="${song.songId}">
                         <div class="music-card-cover">
+                            <div class="music-card-play-overlay"><i class="fas fa-play-circle"></i></div>
                             <img src="${cover}" alt="${albumTitle}" onerror="this.src='/img/placeholder-album.avif';" />
                         </div>
                         <div class="music-card-body">
                             <div class="music-card-title" title="${song.title}">${song.title}</div>
                             <div class="music-card-subtitle">
-                                <span class="music-card-artist" data-artist-id="${song.artistId || ''}" title="${artistName}">${artistName}</span>
-                                <span class="music-card-dot">•</span>
-                                <span class="music-card-album" data-album-id="${albumId}" title="${albumTitle}">${albumTitle}</span>
+                                ${subtitleHtml}
                             </div>
                         </div>
                         <div class="music-card-duration">

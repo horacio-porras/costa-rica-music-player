@@ -11,12 +11,14 @@ namespace CostaRicaMusicPlayer.Controllers
         private readonly ISongServicio _songServicio;
         private readonly IArtistServicio _artistServicio;
         private readonly IAlbumServicio _albumServicio;
+        private readonly IWebHostEnvironment _env;
 
-        public MusicController(ISongServicio songServicio, IArtistServicio artistServicio, IAlbumServicio albumServicio)
+        public MusicController(ISongServicio songServicio, IArtistServicio artistServicio, IAlbumServicio albumServicio, IWebHostEnvironment env)
         {
             _songServicio = songServicio;
             _artistServicio = artistServicio;
             _albumServicio = albumServicio;
+            _env = env;
         }
 
         public IActionResult Index()
@@ -57,6 +59,50 @@ namespace CostaRicaMusicPlayer.Controllers
         {
             var response = await _albumServicio.ObtenerAlbumPorIdAsync(id);
             return Json(response);
+        }
+
+        /// <summary>
+        /// Sirve el archivo de audio de una canción para reproducción en el navegador.
+        /// FilePath en la BD puede ser relativo a wwwroot (ej: "audio/cancion.mp3") o una ruta completa.
+        /// </summary>
+        [HttpGet]
+        [Route("Music/StreamSong/{id:int}")]
+        public async Task<IActionResult> StreamSong(int id)
+        {
+            var response = await _songServicio.ObtenerSongPorIdAsync(id);
+            if (!response.esCorrecto || response.Data == null)
+                return NotFound();
+
+            var filePath = response.Data.FilePath?.Trim();
+            if (string.IsNullOrEmpty(filePath))
+                return NotFound();
+
+            string fullPath;
+            if (Path.IsPathRooted(filePath))
+            {
+                fullPath = filePath;
+            }
+            else
+            {
+                var relativePath = filePath.TrimStart('/', '\\');
+                fullPath = Path.Combine(_env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot"), relativePath);
+            }
+
+            if (!System.IO.File.Exists(fullPath))
+                return NotFound();
+
+            var ext = Path.GetExtension(fullPath).ToLowerInvariant();
+            var contentType = ext switch
+            {
+                ".mp3" => "audio/mpeg",
+                ".wav" => "audio/wav",
+                ".ogg" => "audio/ogg",
+                ".m4a" => "audio/mp4",
+                ".aac" => "audio/aac",
+                _ => "application/octet-stream"
+            };
+
+            return PhysicalFile(fullPath, contentType, enableRangeProcessing: true);
         }
     }
 }

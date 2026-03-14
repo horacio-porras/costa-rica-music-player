@@ -42,71 +42,7 @@
         </div>
     </section>
 </div>
-
-<!-- Modal de Artista -->
-<div class="modal fade" id="artistModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content bg-dark text-white border-0">
-
-            <div class="modal-header border-secondary">
-                <h5 class="modal-title">Artista</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-
-            <div class="modal-body text-center">
-
-                <img id="artistModalImage"
-                     class="rounded-circle mb-3"
-                     width="120"
-                     height="120"
-                     style="object-fit:cover;" />
-
-                <h4 id="artistModalName"></h4>
-
-                <p id="artistModalBio" class="text-secondary small"></p>
-
-                <hr class="border-secondary">
-
-                <div class="row">
-                    <div class="col-12 col-md-6 mb-3 text-center">
-                        <h6 class="mb-2">Canciones</h6>
-                        <ul id="artistSongsList" class="list-group list-group-flush text-start"></ul>
-                    </div>
-                    <div class="col-12 col-md-6 mb-3 text-center">
-                        <h6 class="mb-2">Álbumes</h6>
-                        <ul id="artistAlbumsList" class="list-group list-group-flush text-start"></ul>
-                    </div>
-                </div>
-
-            </div>
-
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="albumModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content bg-dark text-white border-0">
-            <div class="modal-header border-secondary">
-                <h5 class="modal-title">Álbum</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body text-center">
-                <img id="albumModalImage"
-                     class="rounded mb-3"
-                     width="160"
-                     height="160"
-                     style="object-fit:cover;" />
-                <h4 id="albumModalTitle"></h4>
-                <p id="albumModalArtist" class="text-secondary mb-1"></p>
-                <p id="albumModalYear" class="text-secondary small"></p>
-                <hr class="border-secondary">
-                <h6 class="mb-3">Canciones</h6>
-                <ul id="albumSongsList" class="list-group list-group-flush"></ul>
-            </div>
-        </div>
-    </div>
-</div>
+@await Html.PartialAsync("_MediaModals")
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.js"></script>

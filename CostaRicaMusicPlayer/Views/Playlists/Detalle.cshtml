@@ -108,7 +108,14 @@
                     {
                         @foreach (var cancion in Model.Songs)
                         {
-                            <tr>
+                            <tr class="playlist-song-row" data-song-id="@cancion.SongId"
+                                data-song='@Html.Raw(System.Text.Json.JsonSerializer.Serialize(new {
+                                    songId = cancion.SongId,
+                                    title = cancion.Title,
+                                    artistName = cancion.ArtistName,
+                                    coverImageUrl = cancion.CoverImageUrl,
+                                    duration = cancion.DurationSeconds
+                                }))'>
                                 <td class="text-secondary playlist-track-cell">
                                     <span class="playlist-track-number">@cancion.TrackNumber</span>
                                     <button type="button" class="playlist-track-play-btn" title="Reproducir @cancion.Title" aria-label="Reproducir @cancion.Title">
@@ -155,6 +162,29 @@
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        (function () {
+            var playlistSongs = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Songs.Select(c => new {
+                songId = c.SongId,
+                title = c.Title,
+                artistName = c.ArtistName,
+                coverImageUrl = c.CoverImageUrl,
+                duration = c.DurationSeconds
+            })));
+
+            document.addEventListener('click', function (e) {
+                var playBtn = e.target.closest('.playlist-track-play-btn');
+                var row = e.target.closest('.playlist-song-row');
+                if (playBtn || (row && !e.target.closest('.playlist-more-btn, .dropdown, .dropdown-menu, .playlist-remove-song-option'))) {
+                    var el = row || (playBtn && playBtn.closest('.playlist-song-row'));
+                    var songId = el ? el.getAttribute('data-song-id') : null;
+                    if (!songId || typeof window.Player === 'undefined') return;
+                    var song = playlistSongs.find(function(s) { return s.songId == songId; });
+                    if (song) window.Player.reproducir(song, playlistSongs);
+                }
+            });
+        })();
+    </script>
     <script>
         (function () {
             document.addEventListener('click', async function (event) {

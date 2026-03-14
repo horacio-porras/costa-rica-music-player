@@ -1,0 +1,179 @@
+/* ===== MODALES REUTILIZABLES ===== */
+/* MISMO GRADIENTE QUE EL BODY - SÓLIDO, SIN TRANSPARENCIA */
+.media-modal {
+    border: none !important;
+    background: radial-gradient(circle at 0% 0%, #3e3e5e, #121212 90%) !important;
+    border-radius: 20px !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8) !important;
+    color: #ffffff;
+}
+
+.media-modal .modal-content {
+        /* MISMO GRADIENTE EXACTO QUE EL BODY */
+        background: radial-gradient(circle at 0% 0%, #3e3e5e, #121212 90%) !important;
+        border-radius: 20px !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8) !important;
+        color: #ffffff;
+}
+
+    .media-modal .modal-header {
+        background: transparent !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+        padding: 1.25rem 1.5rem !important;
+    }
+
+    .media-modal .modal-title {
+        color: #ffffff !important;
+        font-weight: 600 !important;
+        font-size: 1.25rem !important;
+    }
+
+    .media-modal .btn-close-white {
+        opacity: 0.8;
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+    }
+
+        .media-modal .btn-close-white:hover {
+            opacity: 1;
+            transform: rotate(90deg);
+        }
+
+    .media-modal .modal-body {
+        color: #ffffff !important;
+        padding: 1.5rem !important;
+    }
+
+/* Imágenes */
+.artist-modal-img, .album-modal-img {
+    border: 3px solid rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 15px 30px -15px rgba(0, 0, 0, 0.8) !important;
+    transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+    .artist-modal-img:hover, .album-modal-img:hover {
+        border-color: rgba(255, 255, 255, 0.3) !important;
+        transform: scale(1.02);
+    }
+
+.artist-modal-img {
+    width: 120px !important;
+    height: 120px !important;
+    border-radius: 50% !important;
+}
+
+.album-modal-img {
+    width: 160px !important;
+    height: 160px !important;
+    border-radius: 16px !important;
+}
+
+/* Tipografía */
+.media-modal h4,
+.media-modal h5,
+.media-modal h6 {
+    color: #ffffff !important;
+}
+
+.media-modal h4 {
+    font-weight: 600 !important;
+    letter-spacing: -0.02em !important;
+    font-size: 1.5rem !important;
+}
+
+.media-modal h6 {
+    font-weight: 600 !important;
+    font-size: 0.9rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.03em !important;
+    opacity: 0.9 !important;
+    margin-bottom: 1rem !important;
+}
+
+.media-modal p {
+    color: #ffffff !important;
+}
+
+.media-modal .text-secondary {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.media-modal .small {
+    color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Línea divisoria */
+.media-modal hr {
+    background: rgba(255, 255, 255, 0.15) !important;
+    opacity: 1 !important;
+    height: 1px !important;
+    border: none !important;
+    margin: 1.5rem 0 !important;
+}
+
+/* Listas dentro del modal */
+.media-modal .list-group {
+    background: transparent !important;
+    max-height: 220px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.03);
+}
+
+    .media-modal .list-group::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .media-modal .list-group::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 4px;
+    }
+
+    .media-modal .list-group::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+    }
+
+        .media-modal .list-group::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+.media-modal .list-group-item {
+    background: transparent !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    padding: 0.75rem 0 !important;
+    transition: padding-left 0.2s ease, background-color 0.2s ease !important;
+}
+
+    .media-modal .list-group-item:last-child {
+        border-bottom: none !important;
+    }
+
+    .media-modal .list-group-item:hover {
+        background: rgba(255, 255, 255, 0.08) !important;
+        padding-left: 10px !important;
+    }
+
+/* Responsive */
+@media (max-width: 576px) {
+    .media-modal .modal-body {
+        padding: 1.25rem !important;
+    }
+
+    .artist-modal-img {
+        width: 100px !important;
+        height: 100px !important;
+    }
+
+    .album-modal-img {
+        width: 140px !important;
+        height: 140px !important;
+    }
+
+    .media-modal h4 {
+        font-size: 1.3rem !important;
+    }
+}

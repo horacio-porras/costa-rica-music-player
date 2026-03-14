@@ -7,8 +7,9 @@
     <script type="importmap"></script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/modals.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/CostaRicaMusicPlayer.styles.css" asp-append-version="true" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 </head>
 <body>
     <header>
@@ -41,38 +42,47 @@
         @RenderBody()
     </main>
 
-    <!-- BARRA CON FONT AWESOME -->
+    <!-- BARRA REPRODUCTOR -->
+    <audio id="mainAudio" preload="metadata"></audio>
     <div class="spotify-bar">
-        <div class="container-fluid d-flex justify-content-between align-items-center">
-            <!-- Info de canción con portada simulada -->
+        <div class="container-fluid d-flex justify-content-between align-items-center position-relative">
             <div class="player-info d-flex align-items-center gap-3">
-                <div class="album-art">
-                    <i class="fas fa-record-vinyl fa-2x text-secondary"></i>
+                <div class="album-art" id="playerAlbumArt">
+                    <img id="playerCoverImg" src="" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:none;" />
+                    <i id="playerPlaceholderIcon" class="fas fa-record-vinyl fa-2x text-secondary"></i>
                 </div>
                 <div>
-                    <div class="song-title fw-semibold">Nombre de la Canción</div>
+                    <div class="song-title fw-semibold" id="playerSongTitle">Selecciona una canción</div>
                     <div class="song-artist text-secondary small">
-                        <i class="fas fa-user me-1"></i>Artista
+                        <i class="fas fa-user me-1"></i><span id="playerSongArtist">—</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Controles principales -->
-            <div class="player-controls">
-                <button class="control-btn"><i class="fas fa-random"></i></button>
-                <button class="control-btn"><i class="fas fa-step-backward"></i></button>
-                <button class="control-btn play-btn">
-                    <i class="fas fa-play-circle fa-3x"></i>
-                </button>
-                <button class="control-btn"><i class="fas fa-step-forward"></i></button>
-                <button class="control-btn"><i class="fas fa-redo-alt"></i></button>
+            <div class="player-progress-wrap flex-grow-1 mx-3 d-none d-md-flex align-items-center">
+                <span class="player-time-current small text-secondary" id="playerTimeCurrent">0:00</span>
+                <div class="player-progress-bar" id="playerProgressBar">
+                    <div class="player-progress-fill" id="playerProgressFill"></div>
+                </div>
+                <span class="player-time-total small text-secondary" id="playerTimeTotal">0:00</span>
             </div>
 
+            <div class="player-controls">
+                <button type="button" class="control-btn" id="btnShuffle" title="Aleatorio"><i class="fas fa-random"></i></button>
+                <button type="button" class="control-btn" id="btnPrev" title="Anterior"><i class="fas fa-step-backward"></i></button>
+                <button type="button" class="control-btn play-btn" id="btnPlayPause" title="Reproducir/Pausar">
+                    <i class="fas fa-play-circle fa-3x"></i>
+                </button>
+                <button type="button" class="control-btn" id="btnNext" title="Siguiente"><i class="fas fa-step-forward"></i></button>
+                <button type="button" class="control-btn" id="btnRepeat" title="Repetir"><i class="fas fa-redo-alt"></i></button>
+                <button type="button" class="control-btn" id="btnRestart" title="Reiniciar canción"><i class="fas fa-undo-alt"></i></button>
+            </div>
         </div>
     </div>
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/Player.js" asp-append-version="true"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
