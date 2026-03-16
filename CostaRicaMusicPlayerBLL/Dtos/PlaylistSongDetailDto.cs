@@ -8,6 +8,7 @@ namespace CostaRicaMusicBLL.Dtos
         public string ArtistName { get; set; } = "Artista desconocido";
         public string AlbumTitle { get; set; } = "Single";
         public int DurationSeconds { get; set; }
+        public string FilePath { get; set; } = string.Empty;
         public string CoverImageUrl { get; set; } = "/img/placeholder-cover.png";
     }
 }

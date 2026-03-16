@@ -1,50 +1,66 @@
+@using Microsoft.AspNetCore.Http
 @{
     ViewData["Title"] = "Inicio";
+    var usuarioAutenticado = Context.Session.GetInt32("UserId").HasValue;
 }
 
-<div class="home-page">
-    <!-- Sección de Playlists -->
-    <section class="home-section">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2 class="section-title">Tus Playlists</h2>
-            <a asp-controller="Playlists" asp-action="Index" class="view-all-link">
-                Ver todas <i class="bi bi-arrow-right"></i>
-            </a>
+<div class="home-layout">
+    <aside class="home-library-sidebar">
+        <div class="home-library-header">
+            <h2 class="home-library-title mb-0">Tu biblioteca</h2>
+            <button type="button" class="home-library-create-btn js-home-create-playlist">
+                <span class="home-library-create-plus" aria-hidden="true">+</span> Crear
+            </button>
         </div>
-        <div id="playlistsGrid" class="home-grid">
-            <!-- Playlists cargadas por JS -->
-        </div>
-    </section>
 
-    <!-- Sección de Canciones Recomendadas -->
-    <section class="home-section">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2 class="section-title">Canciones Recomendadas</h2>
-            <a asp-controller="Music" asp-action="Index" class="view-all-link">
-                Ver todas <i class="bi bi-arrow-right"></i>
-            </a>
+        <div id="userLibraryList" class="home-library-list">
+            <!-- Playlists del usuario -->
         </div>
-        <div id="recommendedSongsGrid" class="home-grid">
-            <!-- Canciones cargadas por JS -->
-        </div>
-    </section>
+    </aside>
 
-    <!-- Sección de Artistas Recomendados -->
-    <section class="home-section">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2 class="section-title">Artistas Recomendados</h2>
-            <a asp-controller="Music" asp-action="Index" class="view-all-link">
-                Ver todos <i class="bi bi-arrow-right"></i>
-            </a>
+    <div class="home-page">
+        <div id="homeDiscoveryContent">
+            <!-- Sección de Canciones Recomendadas -->
+            <section class="home-section">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2 class="section-title">Canciones Recomendadas</h2>
+                    <a asp-controller="Music" asp-action="Index" class="view-all-link">
+                        Ver todas <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+                <div id="recommendedSongsGrid" class="home-grid">
+                    <!-- Canciones cargadas por JS -->
+                </div>
+            </section>
+
+            <!-- Sección de Artistas Recomendados -->
+            <section class="home-section">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2 class="section-title">Artistas Recomendados</h2>
+                    <a asp-controller="Music" asp-action="Index" class="view-all-link">
+                        Ver todos <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+                <div id="recommendedArtistsGrid" class="home-artists-grid">
+                    <!-- Artistas cargados por JS -->
+                </div>
+            </section>
         </div>
-        <div id="recommendedArtistsGrid" class="home-artists-grid">
-            <!-- Artistas cargados por JS -->
+
+        <div id="homePlaylistDetailContainer" class="home-playlist-detail-container d-none">
+            <!-- Detalle playlist embebido -->
         </div>
-    </section>
+    </div>
 </div>
+@await Html.PartialAsync("~/Views/Playlists/_Create.cshtml")
+@await Html.PartialAsync("~/Views/Playlists/_Edit.cshtml")
 @await Html.PartialAsync("_MediaModals")
 
 @section Scripts {
+    <partial name="_ValidationScriptsPartial" />
     <script src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.js"></script>
+    <script>
+        window.homeIsAuthenticated = @(usuarioAutenticado ? "true" : "false");
+    </script>
     <script src="~/js/Home.js" asp-append-version="true"></script>
 }

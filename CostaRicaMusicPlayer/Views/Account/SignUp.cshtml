@@ -1,0 +1,48 @@
+@using CostaRicaMusicBLL.Dtos
+@model RegisterDto
+@{
+    Layout = null;
+    ViewData["Title"] = "Registrarse";
+}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - CostaRicaMusicPlayer</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="auth-page">
+    <div class="auth-card">
+        <h1 class="auth-title">Sign up to start listening</h1>
+
+        @if (ViewBag.Error != null)
+        {
+            <div class="auth-error">@ViewBag.Error</div>
+        }
+
+        <form asp-action="SignUp" method="post" class="auth-form">
+            <label class="auth-label" asp-for="Email">Email address</label>
+            <input asp-for="Email" class="auth-input" placeholder="name@domain.com" />
+            <span asp-validation-for="Email" class="auth-validation"></span>
+
+            <label class="auth-label mt-3" asp-for="Username">Username</label>
+            <input asp-for="Username" class="auth-input" placeholder="Tu usuario" />
+            <span asp-validation-for="Username" class="auth-validation"></span>
+
+            <label class="auth-label mt-3" asp-for="Password">Password</label>
+            <input asp-for="Password" type="password" class="auth-input" placeholder="Minimo 6 caracteres" />
+            <span asp-validation-for="Password" class="auth-validation"></span>
+
+            <button type="submit" class="auth-main-btn mt-3">Next</button>
+        </form>
+
+        <div class="auth-divider">or</div>
+
+        <a asp-action="Login" class="auth-link-inline">Already have an account?<br /><strong>Log in</strong></a>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+</body>
+</html>

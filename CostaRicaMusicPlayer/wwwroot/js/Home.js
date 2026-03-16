@@ -5,8 +5,11 @@
         albums: [],
         playlists: [],
         recommendedSongs: [],
+        isAuthenticated: false,
+        selectedPlaylistId: null,
 
         init() {
+            this.isAuthenticated = !!window.homeIsAuthenticated;
             this.cargarDatos();
             this.registrarEventos();
         },
@@ -40,6 +43,132 @@
                 if (!albumId) return;
                 self.mostrarAlbum(albumId);
             });
+
+            $(document).on('click', '.home-library-item', function (event) {
+                if ($(event.target).closest('.home-library-item-actions, .home-library-item-action-btn').length) {
+                    return;
+                }
+                if ($(event.target).closest('.home-library-item-cover-wrap').length) {
+                    return;
+                }
+                const playlistId = $(this).data('playlist-id');
+                if (!playlistId) return;
+                $('.home-library-item').removeClass('is-active');
+                $(this).addClass('is-active');
+                self.selectedPlaylistId = Number(playlistId);
+                self.cargarDetallePlaylistEmbebido(playlistId);
+            });
+
+            $(document).on('click', '.home-library-item-cover-wrap', async function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                const playlistId = $(this).closest('.home-library-item').data('playlist-id');
+                if (!playlistId) return;
+                await self.reproducirPlaylistDesdeSidebar(playlistId);
+            });
+
+            $(document).on('click', '.home-library-item-action-btn.btn-edit', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                const playlistId = $(this).closest('.home-library-item').data('playlist-id');
+                if (!playlistId) return;
+                self.cargarPlaylistEnModalEditar(playlistId);
+            });
+
+            $(document).on('click', '.home-library-item-action-btn.btn-delete', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                const playlistId = $(this).closest('.home-library-item').data('playlist-id');
+                if (!playlistId) return;
+                self.eliminarPlaylistDesdeSidebar(playlistId);
+            });
+
+            $('#btnGuardarPlaylist').on('click', (event) => {
+                event.preventDefault();
+                self.guardarPlaylistDesdeSidebar();
+            });
+
+            $('#btnEditarPlaylist').on('click', (event) => {
+                event.preventDefault();
+                self.editarPlaylistDesdeSidebar();
+            });
+
+            $(document).on('click', '.js-home-create-playlist', async function (event) {
+                event.preventDefault();
+                if (self.isAuthenticated) {
+                    $('#modalCrearPlaylist').modal('show');
+                    return;
+                }
+
+                await self.mostrarAvisoLoginCrearPlaylist();
+            });
+
+            $('#modalCrearPlaylist').on('show.bs.modal', async function (event) {
+                if (self.isAuthenticated) {
+                    return;
+                }
+                event.preventDefault();
+                await self.mostrarAvisoLoginCrearPlaylist();
+            });
+
+            $(document).on('click', '#btnVolverHomeDiscovery', function () {
+                self.mostrarDiscovery();
+            });
+
+            $(document).on('click', '.navbar-brand', function (e) {
+                const ruta = (window.location.pathname || '').toLowerCase();
+                const enHome = ruta === '/' || ruta === '/home' || ruta === '/home/index';
+                if (!enHome) {
+                    return;
+                }
+
+                // En Home evitamos recargar: si hay playlist abierta, volvemos al modo discovery.
+                e.preventDefault();
+                const detalleVisible = !$('#homePlaylistDetailContainer').hasClass('d-none');
+                if (detalleVisible) {
+                    self.mostrarDiscovery();
+                }
+
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+
+            $(document).on('click', '#homePlaylistDetailContainer .playlist-song-row', function (e) {
+                if ($(e.target).closest('.playlist-track-play-btn, .playlist-row-actions, .playlist-more-btn, .dropdown-menu').length) {
+                    return;
+                }
+
+                const row = $(this);
+                const playlistSongs = $('#homePlaylistDetailContainer').data('playlist-songs') || [];
+                const song = self.obtenerCancionDesdeFila(row, playlistSongs);
+                if (song && window.Player) {
+                    window.Player.reproducir(song, playlistSongs);
+                }
+            });
+
+            $(document).on('click', '#homePlaylistDetailContainer .playlist-track-play-btn', function () {
+                const row = $(this).closest('.playlist-song-row');
+                const playlistSongs = $('#homePlaylistDetailContainer').data('playlist-songs') || [];
+                const song = self.obtenerCancionDesdeFila(row, playlistSongs);
+                if (song && window.Player) {
+                    window.Player.reproducir(song, playlistSongs);
+                }
+            });
+
+            $(document).on('click', '#homePlaylistDetailContainer .playlist-remove-song-option', async function (event) {
+                event.preventDefault();
+                const playlistId = Number($(this).attr('data-playlist-id'));
+                const songId = Number($(this).attr('data-song-id'));
+                if (!playlistId || !songId) {
+                    return;
+                }
+                await self.eliminarCancionDePlaylistEmbebida(playlistId, songId);
+            });
+
+            document.addEventListener('playlist-song-added', (event) => {
+                const playlistId = Number(event?.detail?.playlistId);
+                if (!playlistId) return;
+                self.actualizarContadorPlaylistSidebar(playlistId);
+            });
         },
 
         cargarDatos() {
@@ -53,7 +182,7 @@
                 // Una vez cargados todos, mostrar los elementos aleatorios
                 this.mostrarCancionesRecomendadas();
                 this.mostrarArtistasRecomendados();
-                this.mostrarPlaylistsRecientes();
+                this.mostrarSidebarPlaylists();
             });
         },
 
@@ -82,14 +211,16 @@
         },
 
         cargarPlaylists() {
-            // Asumiendo que tienes un endpoint similar para playlists
             return $.get('/Playlists/ObtenerPlaylists', result => {
                 if (result.esCorrecto) {
                     this.playlists = result.data || [];
                 }
-            }).fail(() => {
-                // Si no existe el endpoint, crear datos de ejemplo
-                this.playlists = this.generarPlaylistsEjemplo();
+            }).fail((xhr) => {
+                // Visitante no autenticado: mostrar estado vacío orientado a iniciar sesión
+                if (xhr && xhr.status === 401) {
+                    this.isAuthenticated = false;
+                }
+                this.playlists = [];
             });
         },
 
@@ -102,36 +233,600 @@
             return mezclado.slice(0, Math.min(cantidad, array.length));
         },
 
-        mostrarPlaylistsRecientes() {
-            const grid = $('#playlistsGrid');
-            grid.empty();
+        mostrarSidebarPlaylists() {
+            const list = $('#userLibraryList');
+            const createBtn = $('.home-library-create-btn');
+            list.empty();
 
-            // Tomar las últimas 4 playlists (o todas si hay menos)
-            const playlistsMostrar = this.playlists.slice(0, 8);
+            if (!this.playlists || this.playlists.length === 0) {
+                if (!this.isAuthenticated) {
+                    createBtn.removeClass('d-none');
+                    list.append(`
+                        <div class="home-library-empty-card">
+                            <h5>Inicia sesión para ver tu biblioteca</h5>
+                            <p>Accede a tus playlists y crea nuevas colecciones.</p>
+                            <a href="/Account/Login" class="home-library-pill-btn">Iniciar sesión</a>
+                        </div>
+                    `);
+                    return;
+                }
 
-            if (playlistsMostrar.length === 0) {
-                grid.append('<div class="text-secondary">No hay playlists disponibles</div>');
+                createBtn.removeClass('d-none');
+                list.append(`
+                    <div class="home-library-empty-card">
+                        <h5>Crea tu primera playlist</h5>
+                        <p>Organiza tus canciones favoritas en tu biblioteca.</p>
+                        <button type="button" class="home-library-pill-btn border-0 js-home-create-playlist">Crear playlist</button>
+                    </div>
+                `);
                 return;
             }
 
-            playlistsMostrar.forEach(playlist => {
-                const cover = playlist.coverImageUrl || '/img/placeholder-playlist.avif';
-                const card = `
-                    <div class="playlist-card" data-playlist-id="${playlist.playlistId || playlist.id}">
-                        <div class="playlist-card-cover">
-                            <img src="${cover}" alt="${playlist.name}" onerror="this.src='/img/placeholder-artist.png';" />
-                            <div class="playlist-overlay">
-                                <i class="bi bi-play-circle-fill"></i>
-                            </div>
+            createBtn.removeClass('d-none');
+            this.playlists.forEach(playlist => {
+                const songCount = Number(playlist.songCount || 0);
+                const tienePortada = this.tienePortadaPersonalizada(playlist.coverImageUrl);
+                const coverImage = this.normalizarRutaImagen(playlist.coverImageUrl || '/img/placeholder-cover.png');
+                const thumbs = Array.isArray(playlist.thumbnailImages) ? playlist.thumbnailImages : [];
+                const collageSources = [0, 1, 2, 3].map(i => this.normalizarRutaImagen(thumbs[i] || '/img/placeholder-cover.png'));
+                const usarCollage = !tienePortada && songCount > 0 && thumbs.length > 0;
+                const coverMarkup = usarCollage
+                    ? `
+                        <div class="home-library-cover-collage">
+                            ${collageSources.map(src => `
+                                <img src="${src}" class="home-library-cover-collage-item"
+                                     alt="${playlist.name}"
+                                     onerror="this.onerror=null;this.src='/img/placeholder-cover.png';" />
+                            `).join('')}
                         </div>
-                        <div class="playlist-card-body">
-                            <div class="playlist-card-title" title="${playlist.name}">${playlist.name}</div>
-                            <div class="playlist-card-subtitle">${playlist.description || 'Playlist'}</div>
-                            <div class="playlist-card-meta">${playlist.songCount || 0} canciones</div>
+                    `
+                    : `
+                        <img src="${coverImage}" alt="${playlist.name}" class="home-library-item-cover"
+                             onerror="this.onerror=null;this.src='/img/placeholder-cover.png';" />
+                    `;
+                list.append(`
+                    <div class="home-library-item" data-playlist-id="${playlist.playlistId}">
+                        <div class="home-library-item-cover-wrap">
+                            ${coverMarkup}
+                            <span class="home-library-play-overlay" aria-hidden="true">
+                                <i class="fas fa-play"></i>
+                            </span>
                         </div>
-                    </div>`;
-                grid.append(card);
+                        <div class="home-library-item-text">
+                            <div class="home-library-item-title" title="${playlist.name}">${playlist.name}</div>
+                            <div class="home-library-item-meta">${playlist.songCount || 0} canciones</div>
+                        </div>
+                        <div class="home-library-item-actions">
+                            <button type="button" class="home-library-item-action-btn btn-edit" title="Editar playlist" aria-label="Editar playlist">
+                                <i class="fas fa-pen"></i>
+                            </button>
+                            <button type="button" class="home-library-item-action-btn btn-delete" title="Eliminar playlist" aria-label="Eliminar playlist">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `);
             });
+
+        },
+
+        actualizarContadorPlaylistSidebar(playlistId) {
+            const playlist = this.playlists.find(p => Number(p.playlistId) === Number(playlistId));
+            if (!playlist) {
+                return;
+            }
+
+            playlist.songCount = Number(playlist.songCount || 0) + 1;
+
+            const item = $(`.home-library-item[data-playlist-id="${playlistId}"]`);
+            if (item.length > 0) {
+                item.find('.home-library-item-meta').text(`${playlist.songCount} canciones`);
+            }
+        },
+
+        obtenerCancionDesdeFila(row, playlistSongs) {
+            const songId = Number(row.attr('data-song-id'));
+            const songIndex = Number(row.attr('data-song-index'));
+            const songById = playlistSongs.find(s => Number(s.songId) === songId);
+            const songByIndex = Number.isNaN(songIndex) ? null : (playlistSongs[songIndex] || null);
+            if (songById || songByIndex) {
+                return songById || songByIndex;
+            }
+
+            if (!songId || songId <= 0) {
+                return null;
+            }
+
+            const title = row.find('.playlist-song-title').first().text().trim() || 'Sin titulo';
+            const artistName = row.find('.playlist-song-artist').first().text().trim() || 'Artista desconocido';
+            const coverImageUrl = this.normalizarRutaImagen(row.find('.playlist-song-cover').attr('src') || '/img/placeholder-cover.png');
+            const durationText = row.find('td.text-end').first().text().trim();
+            const duration = this.parsearDuracion(durationText);
+
+            return {
+                songId,
+                title,
+                artistName,
+                coverImageUrl,
+                duration,
+                filePath: ''
+            };
+        },
+
+        parsearDuracion(texto) {
+            const partes = String(texto || '').trim().split(':');
+            if (partes.length !== 2) {
+                return 0;
+            }
+            const min = Number(partes[0]);
+            const sec = Number(partes[1]);
+            if (Number.isNaN(min) || Number.isNaN(sec)) {
+                return 0;
+            }
+            return (min * 60) + sec;
+        },
+
+        async mostrarAvisoLoginCrearPlaylist() {
+            if (typeof Swal !== 'undefined') {
+                const result = await Swal.fire({
+                    title: 'Necesitas iniciar sesion',
+                    text: 'Debes iniciar sesion para crear playlists.',
+                    icon: 'info',
+                    background: '#232323',
+                    color: '#f3f3f3',
+                    showCancelButton: true,
+                    reverseButtons: true,
+                    buttonsStyling: false,
+                    customClass: {
+                        popup: 'playlist-swal-popup',
+                        confirmButton: 'playlist-swal-confirm',
+                        cancelButton: 'playlist-swal-cancel'
+                    },
+                    confirmButtonText: 'Ir a Login',
+                    cancelButtonText: 'Cancelar'
+                });
+
+                if (result.isConfirmed) {
+                    window.location.href = '/Account/Login';
+                }
+                return;
+            }
+
+            alert('Debes iniciar sesion para crear playlists.');
+        },
+
+        cargarPlaylistEnModalEditar(playlistId) {
+            $.get(`/Playlists/ObtenerPlaylistPorId?id=${playlistId}`, result => {
+                if (!result || result.codigoStatus === 401) {
+                    window.location.href = '/Account/Login';
+                    return;
+                }
+                if (!result.esCorrecto || !result.data) {
+                    alert('No se pudo cargar la playlist.');
+                    return;
+                }
+
+                if (typeof window.cargarPlaylistEnModal === 'function') {
+                    window.cargarPlaylistEnModal(result.data);
+                }
+                $('#modalEditarPlaylist').modal('show');
+            }).fail(() => {
+                alert('Error al cargar la playlist.');
+            });
+        },
+
+        guardarPlaylistDesdeSidebar() {
+            const form = $('#formCrearPlaylist');
+            if (!form.length) return;
+            if (form.valid && !form.valid()) return;
+
+            const formData = new FormData(form[0]);
+
+            $.ajax({
+                url: form.attr('action'),
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: (response) => {
+                    if (!response || response.codigoStatus === 401) {
+                        window.location.href = '/Account/Login';
+                        return;
+                    }
+                    if (!response.esCorrecto) {
+                        alert(response.mensaje || 'No se pudo crear la playlist.');
+                        return;
+                    }
+
+                    $('#modalCrearPlaylist').modal('hide');
+                    form[0].reset();
+                    $('#previewImagen').attr('src', '/img/placeholder-cover.png');
+                    this.recargarSidebarYDetalle();
+                },
+                error: () => alert('Error de conexión al crear la playlist.')
+            });
+        },
+
+        editarPlaylistDesdeSidebar() {
+            const form = $('#formEditarPlaylist');
+            if (!form.length) return;
+            if (form.valid && !form.valid()) return;
+
+            const formData = new FormData(form[0]);
+            const playlistId = Number($('#PlaylistId').val());
+
+            $.ajax({
+                url: form.attr('action'),
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: (response) => {
+                    if (!response || response.codigoStatus === 401) {
+                        window.location.href = '/Account/Login';
+                        return;
+                    }
+                    if (!response.esCorrecto) {
+                        alert(response.mensaje || 'No se pudo actualizar la playlist.');
+                        return;
+                    }
+
+                    $('#modalEditarPlaylist').modal('hide');
+                    form[0].reset();
+                    $('#previewImagenActual').attr('src', '/img/placeholder-cover.png');
+                    $('#nombreImagenActual').text('Sin imagen');
+                    this.recargarSidebarYDetalle(playlistId || this.selectedPlaylistId);
+                },
+                error: () => alert('Error de conexión al actualizar la playlist.')
+            });
+        },
+
+        async eliminarPlaylistDesdeSidebar(playlistId) {
+            let confirmado = false;
+            if (typeof Swal !== 'undefined') {
+                const result = await Swal.fire({
+                    title: 'Eliminar playlist',
+                    text: 'Esta accion no se puede deshacer.',
+                    icon: undefined,
+                    background: '#232323',
+                    color: '#f3f3f3',
+                    showCancelButton: true,
+                    reverseButtons: true,
+                    buttonsStyling: false,
+                    customClass: {
+                        popup: 'playlist-swal-popup',
+                        confirmButton: 'playlist-swal-confirm',
+                        cancelButton: 'playlist-swal-cancel'
+                    },
+                    confirmButtonText: 'Si, eliminar',
+                    cancelButtonText: 'Cancelar'
+                });
+                confirmado = !!result.isConfirmed;
+            } else {
+                confirmado = confirm('Esta accion no se puede deshacer. ¿Eliminar playlist?');
+            }
+
+            if (!confirmado) return;
+
+            $.ajax({
+                url: '/Playlists/EliminarPlaylist',
+                type: 'POST',
+                data: { id: playlistId },
+                success: (response) => {
+                    if (!response || response.codigoStatus === 401) {
+                        window.location.href = '/Account/Login';
+                        return;
+                    }
+                    if (!response.esCorrecto) {
+                        alert(response.mensaje || 'No se pudo eliminar la playlist.');
+                        return;
+                    }
+
+                    if (Number(this.selectedPlaylistId) === Number(playlistId)) {
+                        this.selectedPlaylistId = null;
+                        this.mostrarDiscovery();
+                    }
+                    this.recargarSidebarYDetalle();
+                },
+                error: () => alert('Error de conexión al eliminar la playlist.')
+            });
+        },
+
+        recargarSidebarYDetalle(playlistIdPreferido = null) {
+            this.cargarPlaylists().then(() => {
+                this.mostrarSidebarPlaylists();
+
+                const targetId = Number(playlistIdPreferido || this.selectedPlaylistId || 0);
+                if (!targetId) return;
+
+                const existe = this.playlists.some(p => Number(p.playlistId) === targetId);
+                if (!existe) {
+                    this.selectedPlaylistId = null;
+                    this.mostrarDiscovery();
+                    return;
+                }
+
+                this.selectedPlaylistId = targetId;
+                $(`.home-library-item[data-playlist-id="${targetId}"]`).addClass('is-active');
+
+                const detalleVisible = !$('#homePlaylistDetailContainer').hasClass('d-none');
+                if (detalleVisible) {
+                    this.cargarDetallePlaylistEmbebido(targetId);
+                }
+            });
+        },
+
+        async cargarDetallePlaylistEmbebido(playlistId) {
+            if (!this.isAuthenticated) {
+                return;
+            }
+            this.selectedPlaylistId = Number(playlistId);
+
+            try {
+                const result = await $.get(`/Playlists/ObtenerDetallePlaylist?id=${playlistId}`);
+                if (!result || !result.esCorrecto || !result.data) {
+                    return;
+                }
+
+                this.renderizarDetallePlaylistEmbebido(result.data);
+            } catch (error) {
+                // Sesion vencida o error de red
+                console.error(error);
+            }
+        },
+
+        async reproducirPlaylistDesdeSidebar(playlistId) {
+            if (!this.isAuthenticated) {
+                if (typeof Swal !== 'undefined') {
+                    await Swal.fire({
+                        title: 'Necesitas iniciar sesion',
+                        text: 'Inicia sesion para reproducir playlists guardadas.',
+                        icon: 'info',
+                        background: '#232323',
+                        color: '#f3f3f3',
+                        confirmButtonColor: '#1db954'
+                    });
+                }
+                return;
+            }
+
+            try {
+                const result = await $.get(`/Playlists/ObtenerDetallePlaylist?id=${playlistId}`);
+                if (!result || !result.esCorrecto || !result.data) {
+                    return;
+                }
+
+                const songs = this.mapearSongsParaPlayer(result.data.songs || []);
+                if (!songs.length || typeof window.Player === 'undefined') {
+                    return;
+                }
+
+                window.Player.reproducir(songs[0], songs);
+            } catch (error) {
+                console.error(error);
+            }
+        },
+
+        mapearSongsParaPlayer(songs) {
+            return (songs || [])
+                .map(s => ({
+                    songId: s.songId ?? s.SongId,
+                    title: s.title ?? s.Title ?? 'Sin titulo',
+                    artistName: s.artistName ?? s.ArtistName ?? 'Artista desconocido',
+                    coverImageUrl: this.normalizarRutaImagen((s.coverImageUrl ?? s.CoverImageUrl) || '/img/placeholder-cover.png'),
+                    duration: s.durationSeconds ?? s.DurationSeconds ?? 0,
+                    filePath: s.filePath ?? s.FilePath ?? ''
+                }))
+                .filter(s => Number(s.songId) > 0);
+        },
+
+        mostrarDiscovery() {
+            $('#homePlaylistDetailContainer').addClass('d-none').empty();
+            $('#homeDiscoveryContent').removeClass('d-none');
+            $('.home-library-item').removeClass('is-active');
+        },
+
+        renderizarDetallePlaylistEmbebido(playlist) {
+            const detailContainer = $('#homePlaylistDetailContainer');
+            const playlistId = Number(playlist.playlistId || 0);
+            const usaPortadaSeleccionada = !!playlist.coverImageUrl && !playlist.coverImageUrl.includes('placeholder');
+            const cover = this.normalizarRutaImagen(playlist.coverImageUrl || '/img/placeholder-cover.png');
+            const collage = (playlist.headerCollageImages || []).slice(0, 4);
+            const canciones = Array.isArray(playlist.songs) ? playlist.songs : [];
+
+            const collageMarkup = collage.length > 0
+                ? [0, 1, 2, 3].map(i => {
+                    const src = this.normalizarRutaImagen(collage[i] || '/img/placeholder-cover.png');
+                    return `<img src="${src}" class="playlist-collage-item" alt="thumbnail cancion ${i + 1}"
+                              onerror="this.onerror=null; this.src='/img/placeholder-cover.png';" />`;
+                }).join('')
+                : `<div class="playlist-collage-empty"><i class="fas fa-music"></i></div>`;
+
+            const cancionesMarkup = canciones.length === 0
+                ? `<tr><td colspan="5" class="text-center text-secondary py-4">Esta playlist no tiene canciones todavia.</td></tr>`
+                : canciones.map((cancion, index) => {
+                    const songId = cancion.songId ?? cancion.SongId ?? 0;
+                    const trackNumber = cancion.trackNumber ?? cancion.TrackNumber ?? (index + 1);
+                    const title = cancion.title ?? cancion.Title ?? 'Sin titulo';
+                    const artistName = cancion.artistName ?? cancion.ArtistName ?? 'Artista desconocido';
+                    const albumTitle = cancion.albumTitle ?? cancion.AlbumTitle ?? 'Single';
+                    const durationSeconds = cancion.durationSeconds ?? cancion.DurationSeconds ?? 0;
+                    const coverImageUrl = this.normalizarRutaImagen((cancion.coverImageUrl ?? cancion.CoverImageUrl) || '/img/placeholder-cover.png');
+
+                    return `
+                        <tr class="playlist-song-row" data-song-index="${index}" data-song-id="${songId}">
+                            <td class="text-secondary playlist-track-cell">
+                                <span class="playlist-track-number">${trackNumber}</span>
+                                <button type="button" class="playlist-track-play-btn" title="Reproducir ${this.escapeHtml(title)}">
+                                    <i class="fas fa-play"></i>
+                                </button>
+                            </td>
+                            <td>
+                                <div class="playlist-song-title-cell">
+                                    <img src="${coverImageUrl}"
+                                         alt="${this.escapeHtml(title)}"
+                                         class="playlist-song-cover"
+                                         onerror="this.onerror=null; this.src='/img/placeholder-cover.png';" />
+                                    <div class="playlist-song-text">
+                                        <span class="playlist-song-title">${this.escapeHtml(title)}</span>
+                                        <span class="playlist-song-artist">${this.escapeHtml(artistName)}</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-secondary">${this.escapeHtml(albumTitle)}</td>
+                            <td class="text-end text-secondary">${this.formatearDuracion(durationSeconds)}</td>
+                            <td class="playlist-row-actions text-end">
+                                <button type="button" class="playlist-more-btn" title="Mas opciones" aria-label="Mas opciones" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-ellipsis-h"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end playlist-song-dropdown">
+                                    <li>
+                                        <button type="button"
+                                                class="dropdown-item playlist-remove-song-option"
+                                                data-playlist-id="${playlistId}"
+                                                data-song-id="${songId}">
+                                            <i class="fas fa-trash me-2"></i>Eliminar de esta playlist
+                                        </button>
+                                    </li>
+                                </ul>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+            detailContainer.html(`
+                <div class="playlist-detail-page home-embedded-detail">
+                    <div class="playlist-detail-header">
+                        <div class="playlist-detail-cover">
+                            ${usaPortadaSeleccionada
+                                ? `<img src="${cover}" alt="${this.escapeHtml(playlist.name)}" class="playlist-detail-cover-image"
+                                       onerror="this.onerror=null; this.src='/img/placeholder-cover.png';" />`
+                                : `<div class="playlist-collage">${collageMarkup}</div>`}
+                        </div>
+
+                        <div class="playlist-detail-info">
+                            <p class="playlist-detail-type mb-1">Playlist publica</p>
+                            <h1 class="playlist-detail-title">${this.escapeHtml(playlist.name)}</h1>
+                            <p class="playlist-detail-meta mb-0">
+                                <span>${this.escapeHtml(playlist.username || 'Usuario')}</span>
+                                <span class="mx-2">-</span>
+                                <span>${playlist.songCount || 0} canciones</span>
+                                <span class="mx-2">-</span>
+                                <span>${this.formatearDuracionTotal(playlist.totalDurationSeconds || 0)}</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="playlist-detail-body">
+                        <div class="playlist-detail-toolbar">
+                            <button type="button" class="btn-playlist-back" id="btnVolverHomeDiscovery">
+                                <i class="fas fa-arrow-left me-2"></i>Volver
+                            </button>
+                        </div>
+
+                        <div class="playlist-songs-table-wrapper">
+                            <table class="table playlist-songs-table align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 50px;">#</th>
+                                        <th>Titulo</th>
+                                        <th>Album</th>
+                                        <th class="text-end" style="width: 90px;"><i class="far fa-clock"></i></th>
+                                        <th style="width: 44px;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>${cancionesMarkup}</tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `);
+
+            detailContainer.data('playlist-songs', canciones.map(c => ({
+                songId: c.songId ?? c.SongId,
+                title: c.title ?? c.Title,
+                artistName: c.artistName ?? c.ArtistName,
+                coverImageUrl: this.normalizarRutaImagen((c.coverImageUrl ?? c.CoverImageUrl) || '/img/placeholder-cover.png'),
+                duration: c.durationSeconds ?? c.DurationSeconds,
+                filePath: c.filePath ?? c.FilePath ?? ''
+            })).filter(s => Number(s.songId) > 0));
+
+            $('#homeDiscoveryContent').addClass('d-none');
+            detailContainer.removeClass('d-none');
+        },
+
+        async eliminarCancionDePlaylistEmbebida(playlistId, songId) {
+            if (typeof Swal !== 'undefined') {
+                const confirmacion = await Swal.fire({
+                    title: 'Eliminar cancion',
+                    text: 'Se quitara esta cancion de la playlist.',
+                    icon: undefined,
+                    background: '#232323',
+                    color: '#f3f3f3',
+                    showCancelButton: true,
+                    reverseButtons: true,
+                    buttonsStyling: false,
+                    customClass: {
+                        popup: 'playlist-swal-popup',
+                        confirmButton: 'playlist-swal-confirm',
+                        cancelButton: 'playlist-swal-cancel'
+                    },
+                    confirmButtonText: 'Si, eliminar',
+                    cancelButtonText: 'Cancelar'
+                });
+
+                if (!confirmacion.isConfirmed) {
+                    return;
+                }
+            }
+
+            const body = new URLSearchParams({
+                playlistId: String(playlistId),
+                songId: String(songId)
+            });
+
+            try {
+                const response = await fetch('/Playlists/EliminarCancionDePlaylist', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                    },
+                    body
+                });
+
+                const result = await response.json();
+                if (result && result.esCorrecto) {
+                    this.recargarSidebarYDetalle(playlistId);
+                    return;
+                }
+
+                const mensaje = (result && result.mensaje) ? result.mensaje : 'No se pudo eliminar la canción.';
+                if (typeof Swal !== 'undefined') {
+                    await Swal.fire({
+                        title: 'No se pudo eliminar',
+                        text: mensaje,
+                        icon: 'error',
+                        background: '#232323',
+                        color: '#f3f3f3',
+                        confirmButtonColor: '#1db954'
+                    });
+                } else {
+                    alert(mensaje);
+                }
+            } catch (error) {
+                if (typeof Swal !== 'undefined') {
+                    await Swal.fire({
+                        title: 'Error de conexion',
+                        text: 'No se pudo conectar con el servidor.',
+                        icon: 'error',
+                        background: '#232323',
+                        color: '#f3f3f3',
+                        confirmButtonColor: '#1db954'
+                    });
+                } else {
+                    alert('No se pudo conectar con el servidor.');
+                }
+            }
         },
 
         mostrarCancionesRecomendadas() {
@@ -209,6 +904,42 @@
             const min = Math.floor(segundos / 60);
             const sec = segundos % 60;
             return `${min}:${sec.toString().padStart(2, '0')}`;
+        },
+
+        formatearDuracionTotal(totalSegundos) {
+            if (totalSegundos <= 0) return '0 min';
+            const horas = Math.floor(totalSegundos / 3600);
+            const minutos = Math.floor((totalSegundos % 3600) / 60);
+            return horas > 0 ? `${horas} h ${minutos} min` : `${minutos} min`;
+        },
+
+        normalizarRutaImagen(url) {
+            if (!url) {
+                return '/img/placeholder-cover.png';
+            }
+            if (/^https?:\/\//i.test(url)) {
+                return url;
+            }
+            const normalizada = String(url).replace(/\\/g, '/').trim();
+            return normalizada.startsWith('/') ? normalizada : `/${normalizada}`;
+        },
+
+        tienePortadaPersonalizada(url) {
+            if (!url) {
+                return false;
+            }
+            return !url.includes('placeholder-playlist')
+                && !url.includes('placeholder-album')
+                && !url.includes('placeholder-cover');
+        },
+
+        escapeHtml(texto) {
+            return String(texto || '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
         },
 
         mostrarArtist(artistId) {

@@ -79,6 +79,11 @@
 
         cargarPlaylists() {
             $.get('/Playlists/ObtenerPlaylists', result => {
+                if (result && result.codigoStatus === 401) {
+                    window.location.href = '/Account/Login';
+                    return;
+                }
+
                 if (result.esCorrecto) {
                     this.playlists = result.data || [];
                     this.pintarPlaylists(this.playlists);

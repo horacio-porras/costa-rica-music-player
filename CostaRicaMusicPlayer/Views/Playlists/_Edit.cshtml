@@ -11,7 +11,7 @@
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form id="formEditarPlaylist" asp-action="ActualizarPlaylist" method="post" enctype="multipart/form-data">
+            <form id="formEditarPlaylist" asp-controller="Playlists" asp-action="ActualizarPlaylist" method="post" enctype="multipart/form-data">
                 <input type="hidden" asp-for="PlaylistId" id="PlaylistId" />
 
                 <div class="modal-body modal-playlist-create-body">
@@ -22,12 +22,7 @@
                         <span asp-validation-for="Name" class="text-danger small"></span>
                     </div>
 
-                    <div class="mb-3 modal-playlist-group">
-                        <label asp-for="UserId" class="form-label text-white">Usuario ID</label>
-                        <input asp-for="UserId" class="form-control bg-spotify-light border-0 text-white"
-                               id="EditUserId" placeholder="ID del usuario" required />
-                        <span asp-validation-for="UserId" class="text-danger small"></span>
-                    </div>
+                    <input asp-for="UserId" type="hidden" id="EditUserId" />
 
                     <div class="mb-2 modal-playlist-group">
                         <label class="form-label text-white">Imagen de portada</label>

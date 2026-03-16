@@ -4,6 +4,7 @@ using CostaRicaMusicBLL.Servicios.Artists;
 using CostaRicaMusicBLL.Servicios.Playlists;
 using CostaRicaMusicBLL.Servicios.Songs;
 using CostaRicaMusicBLL.Servicios.Albums;
+using CostaRicaMusicBLL.Servicios.Auth;
 using CostaRicaMusicDAL.Data;
 using CostaRicaMusicDAL.Repositorios.Generico;
 
@@ -11,6 +12,12 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromHours(8);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
 
 // DbContext
 builder.Services.AddDbContext<CostaRicaMusicDbContext>(options =>
@@ -24,6 +31,7 @@ builder.Services.AddScoped<ISongServicio, SongServicio>();
 builder.Services.AddScoped<IArtistServicio, ArtistServicio>();
 builder.Services.AddScoped<IPlaylistServicio, PlaylistServicio>();
 builder.Services.AddScoped<IAlbumServicio, AlbumServicio>();
+builder.Services.AddScoped<IAuthServicio, AuthServicio>();
 
 builder.Services.AddSingleton<IHostEnvironment>(builder.Environment);
 
@@ -45,6 +53,7 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseRouting();
+app.UseSession();
 
 app.UseAuthorization();
 

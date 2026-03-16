@@ -81,9 +81,11 @@
         },
 
         obtenerUrlAudio(song) {
-            const fp = (song.filePath || '').trim();
+            const rawPath = (song.filePath || '').trim();
+            const fp = rawPath.replace(/\\/g, '/');
             if (fp.startsWith('http://') || fp.startsWith('https://')) return fp;
             if (fp.startsWith('/') && !fp.startsWith('//')) return fp;
+            if (fp.length > 0) return `/${fp.replace(/^\/+/, '')}`;
             return `/Music/StreamSong/${song.songId}`;
         },
 
@@ -101,6 +103,9 @@
             $('#btnShuffle').on('click', () => self.toggleShuffle());
             $('#btnRepeat').on('click', () => self.toggleRepeat());
             $('#btnRestart').on('click', () => self.restart());
+            $('#btnAddSongToPlaylist').on('click', async () => {
+                await self.agregarCancionAPlaylistActual();
+            });
 
             $('#playerProgressBar').on('click', function(e) {
                 const bar = $(this);
@@ -131,6 +136,143 @@
             this.guardarEstado();
         },
 
+        obtenerCancionActual() {
+            if (!Array.isArray(this.playlist) || this.playlist.length === 0 || this.currentIndex < 0) {
+                return null;
+            }
+            return this.playlist[this.currentIndex] || null;
+        },
+
+        async agregarCancionAPlaylistActual() {
+            const song = this.obtenerCancionActual();
+            if (!song || !song.songId) {
+                this.mostrarMensaje('No hay canción seleccionada.', 'warning');
+                return;
+            }
+
+            let playlistsResponse = null;
+            try {
+                playlistsResponse = await $.get('/Playlists/ObtenerPlaylists');
+            } catch (xhr) {
+                if (xhr && xhr.status === 401) {
+                    this.mostrarMensaje('Inicia sesión para guardar canciones en tus playlists.', 'info');
+                    return;
+                }
+                this.mostrarMensaje('No se pudieron cargar tus playlists.', 'error');
+                return;
+            }
+
+            if (!playlistsResponse || playlistsResponse.codigoStatus === 401) {
+                this.mostrarMensaje('Inicia sesión para guardar canciones en tus playlists.', 'info');
+                return;
+            }
+
+            const playlists = playlistsResponse.data || [];
+            if (playlists.length === 0) {
+                this.mostrarMensaje('Primero crea una playlist para poder agregar canciones.', 'info');
+                return;
+            }
+
+            const playlistId = await this.solicitarPlaylistDestino(playlists);
+            if (!playlistId) {
+                return;
+            }
+
+            try {
+                const body = new URLSearchParams({
+                    playlistId: String(playlistId),
+                    songId: String(song.songId)
+                });
+
+                const response = await fetch('/Playlists/AgregarCancionAPlaylist', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                    },
+                    body
+                });
+
+                const result = await response.json();
+                if (result && result.esCorrecto) {
+                    this.mostrarMensaje('Canción agregada a la playlist.', 'success');
+                    document.dispatchEvent(new CustomEvent('playlist-song-added', {
+                        detail: { playlistId: Number(playlistId), songId: Number(song.songId) }
+                    }));
+                    return;
+                }
+
+                const mensaje = (result && result.mensaje) ? result.mensaje : 'No se pudo agregar la canción.';
+                this.mostrarMensaje(mensaje, result && result.codigoStatus === 409 ? 'info' : 'error');
+            } catch (e) {
+                this.mostrarMensaje('No se pudo agregar la canción por un error de red.', 'error');
+            }
+        },
+
+        async solicitarPlaylistDestino(playlists) {
+            if (typeof Swal !== 'undefined') {
+                const options = {};
+                playlists.forEach((p) => {
+                    const cantidad = Number(p.songCount || 0);
+                    options[String(p.playlistId)] = `${p.name} (${cantidad})`;
+                });
+
+                const result = await Swal.fire({
+                    title: 'Agregar a playlist',
+                    input: 'select',
+                    inputOptions: options,
+                    inputPlaceholder: 'Selecciona una playlist',
+                    showCancelButton: true,
+                    reverseButtons: true,
+                    buttonsStyling: false,
+                    customClass: {
+                        popup: 'playlist-swal-popup',
+                        confirmButton: 'playlist-swal-confirm',
+                        cancelButton: 'playlist-swal-cancel',
+                        input: 'playlist-swal-select'
+                    },
+                    confirmButtonText: 'Agregar',
+                    cancelButtonText: 'Cancelar',
+                    background: '#232323',
+                    color: '#f3f3f3',
+                    inputValidator: (value) => {
+                        if (!value) return 'Selecciona una playlist';
+                        return null;
+                    }
+                });
+
+                if (!result.isConfirmed || !result.value) {
+                    return null;
+                }
+                return Number(result.value);
+            }
+
+            const listado = playlists
+                .map((p, index) => `${index + 1}. ${p.name}`)
+                .join('\n');
+            const entrada = prompt(`Selecciona el número de la playlist:\n\n${listado}`);
+            const indice = Number(entrada) - 1;
+            if (Number.isNaN(indice) || indice < 0 || indice >= playlists.length) {
+                return null;
+            }
+            return playlists[indice].playlistId;
+        },
+
+        mostrarMensaje(texto, tipo = 'info') {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: texto,
+                    icon: tipo,
+                    background: '#232323',
+                    color: '#f3f3f3',
+                    timer: tipo === 'success' ? 1300 : undefined,
+                    showConfirmButton: tipo !== 'success',
+                    confirmButtonColor: '#1db954'
+                });
+                return;
+            }
+            alert(texto);
+        },
+
         actualizarUI(song) {
             const title = song.title || 'Sin título';
             const artist = song.artistName || 'Artista desconocido';
@@ -138,6 +280,10 @@
 
             $('#playerSongTitle').text(title);
             $('#playerSongArtist').text(artist);
+            const addBtn = document.getElementById('btnAddSongToPlaylist');
+            if (addBtn) {
+                addBtn.disabled = !song.songId;
+            }
 
             const img = document.getElementById('playerCoverImg');
             const icon = document.getElementById('playerPlaceholderIcon');

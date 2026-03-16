@@ -1,3 +1,4 @@
+@using Microsoft.AspNetCore.Http
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -23,15 +24,29 @@
                 </button>
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-end">
                     <ul class="navbar-nav">
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">Inicio</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="" asp-controller="Music" asp-action="Index">Música</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="" asp-controller="Playlists" asp-action="Index">Playlists</a>
-                        </li>
+                        @if (Context.Session.GetInt32("UserId").HasValue)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">Inicio</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="Music" asp-action="Index">Música</a>
+                            </li>
+                            <li class="nav-item d-flex align-items-center me-2 text-secondary small">
+                                @Context.Session.GetString("Username")
+                            </li>
+                            <li class="nav-item">
+                                <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                                    <button type="submit" class="nav-link btn btn-link p-0">Salir</button>
+                                </form>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link nav-login-pill" asp-controller="Account" asp-action="Login">Log in</a>
+                            </li>
+                        }
                     </ul>
                 </div>
             </div>
@@ -51,10 +66,17 @@
                     <img id="playerCoverImg" src="" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:none;" />
                     <i id="playerPlaceholderIcon" class="fas fa-record-vinyl fa-2x text-secondary"></i>
                 </div>
-                <div>
-                    <div class="song-title fw-semibold" id="playerSongTitle">Selecciona una canción</div>
-                    <div class="song-artist text-secondary small">
-                        <i class="fas fa-user me-1"></i><span id="playerSongArtist">—</span>
+                <div class="song-meta-wrap">
+                    <div class="song-meta-text">
+                        <div class="song-title fw-semibold" id="playerSongTitle">Selecciona una canción</div>
+                        <div class="song-artist text-secondary small">
+                            <i class="fas fa-user me-1"></i><span id="playerSongArtist">—</span>
+                        </div>
+                    </div>
+                    <div class="song-meta-action">
+                        <button type="button" id="btnAddSongToPlaylist" class="player-add-song-btn" title="Agregar a playlist" aria-label="Agregar a playlist" disabled>
+                            <span class="player-add-plus" aria-hidden="true">+</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -82,6 +104,7 @@
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="~/js/Player.js" asp-append-version="true"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)

@@ -9,6 +9,7 @@ namespace CostaRicaMusicPlayer.Controllers
     public class PlaylistsController : Controller
     {
         private readonly IPlaylistServicio _playlistServicio;
+        private int? UserId => HttpContext.Session.GetInt32("UserId");
 
         public PlaylistsController(IPlaylistServicio playlistServicio)
         {
@@ -17,13 +18,22 @@ namespace CostaRicaMusicPlayer.Controllers
 
         public IActionResult Index()
         {
-            return View();
+            if (!UserId.HasValue)
+            {
+                return RedirectToAction("Login", "Account");
+            }
+            return RedirectToAction("Index", "Home");
         }
 
         [HttpGet]
         public async Task<IActionResult> Detalle(int id)
         {
-            var response = await _playlistServicio.ObtenerDetallePlaylistAsync(id);
+            if (!UserId.HasValue)
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
+            var response = await _playlistServicio.ObtenerDetallePlaylistAsync(id, UserId.Value);
             if (!response.esCorrecto || response.Data is null)
             {
                 return RedirectToAction(nameof(Index));
@@ -35,42 +45,98 @@ namespace CostaRicaMusicPlayer.Controllers
         [HttpGet]
         public async Task<IActionResult> ObtenerPlaylists()
         {
-            var response = await _playlistServicio.ObtenerPlaylistsAsync();
+            if (!UserId.HasValue)
+            {
+                return Json(new { esCorrecto = false, mensaje = "Sesion no valida", codigoStatus = 401 });
+            }
+
+            var response = await _playlistServicio.ObtenerPlaylistsAsync(UserId.Value);
             return Json(response);
         }
 
         [HttpGet]
         public async Task<IActionResult> ObtenerPlaylistPorId(int id)
         {
-            var response = await _playlistServicio.ObtenerPlaylistPorIdAsync(id);
+            if (!UserId.HasValue)
+            {
+                return Json(new { esCorrecto = false, mensaje = "Sesion no valida", codigoStatus = 401 });
+            }
+
+            var response = await _playlistServicio.ObtenerPlaylistPorIdAsync(id, UserId.Value);
+            return Json(response);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ObtenerDetallePlaylist(int id)
+        {
+            if (!UserId.HasValue)
+            {
+                return Json(new { esCorrecto = false, mensaje = "Sesion no valida", codigoStatus = 401 });
+            }
+
+            var response = await _playlistServicio.ObtenerDetallePlaylistAsync(id, UserId.Value);
             return Json(response);
         }
 
         [HttpPost]
         public async Task<IActionResult> AgregarPlaylist(PlaylistDto playlist, IFormFile? imagenPortada = null)
         {
-            var response = await _playlistServicio.AgregarPlaylistAsync(playlist, imagenPortada);
+            if (!UserId.HasValue)
+            {
+                return Json(new { esCorrecto = false, mensaje = "Sesion no valida", codigoStatus = 401 });
+            }
+
+            playlist.UserId = UserId.Value;
+            var response = await _playlistServicio.AgregarPlaylistAsync(playlist, imagenPortada, UserId.Value);
             return Json(response);
         }
 
         [HttpPost]
         public async Task<IActionResult> ActualizarPlaylist(PlaylistDto playlist, IFormFile? imagenPortada = null, bool eliminarImagen = false)
         {
-            var response = await _playlistServicio.ActualizarPlaylistAsync(playlist, imagenPortada, eliminarImagen);
+            if (!UserId.HasValue)
+            {
+                return Json(new { esCorrecto = false, mensaje = "Sesion no valida", codigoStatus = 401 });
+            }
+
+            playlist.UserId = UserId.Value;
+            var response = await _playlistServicio.ActualizarPlaylistAsync(playlist, imagenPortada, eliminarImagen, UserId.Value);
+            return Json(response);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AgregarCancionAPlaylist(int playlistId, int songId)
+        {
+            if (!UserId.HasValue)
+            {
+                return Json(new { esCorrecto = false, mensaje = "Sesion no valida", codigoStatus = 401 });
+            }
+
+            var response = await _playlistServicio.AgregarCancionAPlaylistAsync(playlistId, songId, UserId.Value);
             return Json(response);
         }
 
         [HttpPost]
         public async Task<IActionResult> EliminarPlaylist(int id)
         {
-            var response = await _playlistServicio.EliminarPlaylistAsync(id);
+            if (!UserId.HasValue)
+            {
+                return Json(new { esCorrecto = false, mensaje = "Sesion no valida", codigoStatus = 401 });
+            }
+
+            var response = await _playlistServicio.EliminarPlaylistAsync(id, UserId.Value);
             return Json(response);
         }
 
         [HttpPost]
         public async Task<IActionResult> EliminarCancionDePlaylist(int playlistId, int songId)
         {
-            var response = await _playlistServicio.EliminarCancionDePlaylistAsync(playlistId, songId);
+            if (!UserId.HasValue)
+            {
+                return Json(new { esCorrecto = false, mensaje = "Sesion no valida", codigoStatus = 401 });
+            }
+
+            var response = await _playlistServicio.EliminarCancionDePlaylistAsync(playlistId, songId, UserId.Value);
             return Json(response);
         }
     }

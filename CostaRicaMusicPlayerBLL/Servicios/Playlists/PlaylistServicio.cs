@@ -31,7 +31,7 @@ namespace CostaRicaMusicBLL.Servicios.Playlists
             _context = context;
         }
 
-        public async Task<CustomResponse<PlaylistDto>> ActualizarPlaylistAsync(PlaylistDto playlistDto, IFormFile? imagenPortada = null, bool eliminarImagen = false)
+        public async Task<CustomResponse<PlaylistDto>> ActualizarPlaylistAsync(PlaylistDto playlistDto, IFormFile? imagenPortada = null, bool eliminarImagen = false, int userId = 0)
         {
             var response = new CustomResponse<PlaylistDto>();
 
@@ -50,6 +50,13 @@ namespace CostaRicaMusicBLL.Servicios.Playlists
                 response.esCorrecto = false;
                 response.mensaje = "La playlist no existe.";
                 response.codigoStatus = 404;
+                return response;
+            }
+            if (playlistExistente.UserId != userId)
+            {
+                response.esCorrecto = false;
+                response.mensaje = "No tienes permisos para editar esta playlist.";
+                response.codigoStatus = 403;
                 return response;
             }
 
@@ -83,6 +90,7 @@ namespace CostaRicaMusicBLL.Servicios.Playlists
                 playlistDto.CoverImageUrl = playlistExistente.CoverImageUrl;
             }
 
+            playlistDto.UserId = userId;
             var playlistActualiza = _mapper.Map<CostaRicaMusicDAL.Entidades.Playlist>(playlistDto);
             _repositorioGenerico.ActualizarAsync(playlistActualiza);
 
@@ -97,7 +105,7 @@ namespace CostaRicaMusicBLL.Servicios.Playlists
             return response;
         }
 
-        public async Task<CustomResponse<PlaylistDto>> AgregarPlaylistAsync(PlaylistDto playlistDto, IFormFile? imagenPortada = null)
+        public async Task<CustomResponse<PlaylistDto>> AgregarPlaylistAsync(PlaylistDto playlistDto, IFormFile? imagenPortada = null, int userId = 0)
         {
             var response = new CustomResponse<PlaylistDto>();
 
@@ -108,6 +116,14 @@ namespace CostaRicaMusicBLL.Servicios.Playlists
                 response.codigoStatus = 400;
                 return response;
             }
+            if (userId <= 0)
+            {
+                response.esCorrecto = false;
+                response.mensaje = "Usuario no valido.";
+                response.codigoStatus = 401;
+                return response;
+            }
+            playlistDto.UserId = userId;
 
             // Procesar la imagen si viene
             string? rutaImagen = null;
@@ -158,7 +174,7 @@ namespace CostaRicaMusicBLL.Servicios.Playlists
             return response;
         }
 
-        public async Task<CustomResponse<PlaylistDto>> EliminarPlaylistAsync(int id)
+        public async Task<CustomResponse<PlaylistDto>> EliminarPlaylistAsync(int id, int userId)
         {
             var response = new CustomResponse<PlaylistDto>();
 
@@ -172,7 +188,21 @@ namespace CostaRicaMusicBLL.Servicios.Playlists
 
             // Obtener la playlist para eliminar su imagen
             var playlist = await _repositorioGenerico.ObtenerPorIdAsync(id);
-            if (playlist != null && !string.IsNullOrEmpty(playlist.CoverImageUrl) &&
+            if (playlist is null)
+            {
+                response.esCorrecto = false;
+                response.mensaje = "La playlist no existe.";
+                response.codigoStatus = 404;
+                return response;
+            }
+            if (playlist.UserId != userId)
+            {
+                response.esCorrecto = false;
+                response.mensaje = "No tienes permisos para eliminar esta playlist.";
+                response.codigoStatus = 403;
+                return response;
+            }
+            if (!string.IsNullOrEmpty(playlist.CoverImageUrl) &&
                 !playlist.CoverImageUrl.Contains("placeholder"))
             {
                 await EliminarImagenAsync(playlist.CoverImageUrl);
@@ -191,7 +221,7 @@ namespace CostaRicaMusicBLL.Servicios.Playlists
             return response;
         }
 
-        public async Task<CustomResponse<PlaylistDto>> ObtenerPlaylistPorIdAsync(int id)
+        public async Task<CustomResponse<PlaylistDto>> ObtenerPlaylistPorIdAsync(int id, int userId)
         {
             var response = new CustomResponse<PlaylistDto>();
 
@@ -204,17 +234,25 @@ namespace CostaRicaMusicBLL.Servicios.Playlists
                 response.codigoStatus = 404;
                 return response;
             }
+            if (playlist.UserId != userId)
+            {
+                response.esCorrecto = false;
+                response.mensaje = "No tienes permisos para ver esta playlist.";
+                response.codigoStatus = 403;
+                return response;
+            }
 
             response.Data = _mapper.Map<PlaylistDto>(playlist);
             return response;
         }
 
-        public async Task<CustomResponse<List<PlaylistDto>>> ObtenerPlaylistsAsync()
+        public async Task<CustomResponse<List<PlaylistDto>>> ObtenerPlaylistsAsync(int userId)
         {
             var response = new CustomResponse<List<PlaylistDto>>();
 
             var playlists = await _context.Playlists
                 .AsNoTracking()
+                .Where(p => p.UserId == userId)
                 .Include(p => p.PlaylistSongs)
                     .ThenInclude(ps => ps.Song)
                         .ThenInclude(s => s.Album)
@@ -232,6 +270,7 @@ namespace CostaRicaMusicBLL.Servicios.Playlists
                     .Select(ps => NormalizarRutaImagen(ps.Song?.Album?.CoverImageUrl)
                         ?? NormalizarRutaImagen(ps.Song?.CoverImageUrl)
                         ?? "/img/placeholder-cover.png")
+                    .Distinct()
                     .Take(4)
                     .ToList()
             }).ToList();
@@ -239,7 +278,7 @@ namespace CostaRicaMusicBLL.Servicios.Playlists
             return response;
         }
 
-        public async Task<CustomResponse<PlaylistDetailDto>> ObtenerDetallePlaylistAsync(int id)
+        public async Task<CustomResponse<PlaylistDetailDto>> ObtenerDetallePlaylistAsync(int id, int userId)
         {
             var response = new CustomResponse<PlaylistDetailDto>();
 
@@ -254,7 +293,7 @@ namespace CostaRicaMusicBLL.Servicios.Playlists
                     .ThenInclude(ps => ps.Song)
                         .ThenInclude(s => s.SongArtists)
                             .ThenInclude(sa => sa.Artist)
-                .FirstOrDefaultAsync(p => p.PlaylistId == id);
+                .FirstOrDefaultAsync(p => p.PlaylistId == id && p.UserId == userId);
 
             if (playlist is null)
             {
@@ -276,6 +315,7 @@ namespace CostaRicaMusicBLL.Servicios.Playlists
                         ?? "Artista desconocido",
                     AlbumTitle = string.IsNullOrWhiteSpace(ps.Song?.Album?.Title) ? "Single" : ps.Song.Album.Title,
                     DurationSeconds = ps.Song?.Duration ?? 0,
+                    FilePath = ps.Song?.FilePath ?? string.Empty,
                     CoverImageUrl = NormalizarRutaImagen(ps.Song?.Album?.CoverImageUrl)
                         ?? NormalizarRutaImagen(ps.Song?.CoverImageUrl)
                         ?? "/img/placeholder-cover.png"
@@ -285,6 +325,7 @@ namespace CostaRicaMusicBLL.Servicios.Playlists
             var imagenesHeader = canciones
                 .Select(c => c.CoverImageUrl)
                 .Where(url => !string.IsNullOrWhiteSpace(url))
+                .Distinct()
                 .Take(4)
                 .ToList();
 
@@ -304,7 +345,81 @@ namespace CostaRicaMusicBLL.Servicios.Playlists
             return response;
         }
 
-        public async Task<CustomResponse<bool>> EliminarCancionDePlaylistAsync(int playlistId, int songId)
+        public async Task<CustomResponse<bool>> AgregarCancionAPlaylistAsync(int playlistId, int songId, int userId)
+        {
+            var response = new CustomResponse<bool>();
+
+            if (playlistId <= 0 || songId <= 0)
+            {
+                response.esCorrecto = false;
+                response.mensaje = "Datos no validos para agregar la cancion.";
+                response.codigoStatus = 400;
+                response.Data = false;
+                return response;
+            }
+
+            var playlist = await _context.Playlists
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.PlaylistId == playlistId);
+
+            if (playlist is null)
+            {
+                response.esCorrecto = false;
+                response.mensaje = "La playlist no existe.";
+                response.codigoStatus = 404;
+                response.Data = false;
+                return response;
+            }
+
+            if (playlist.UserId != userId)
+            {
+                response.esCorrecto = false;
+                response.mensaje = "No tienes permisos para modificar esta playlist.";
+                response.codigoStatus = 403;
+                response.Data = false;
+                return response;
+            }
+
+            var songExiste = await _context.Songs
+                .AsNoTracking()
+                .AnyAsync(s => s.SongId == songId);
+            if (!songExiste)
+            {
+                response.esCorrecto = false;
+                response.mensaje = "La cancion no existe.";
+                response.codigoStatus = 404;
+                response.Data = false;
+                return response;
+            }
+
+            var yaExiste = await _context.PlaylistSongs
+                .AsNoTracking()
+                .AnyAsync(ps => ps.PlaylistId == playlistId && ps.SongId == songId);
+            if (yaExiste)
+            {
+                response.esCorrecto = false;
+                response.mensaje = "La cancion ya existe en esta playlist.";
+                response.codigoStatus = 409;
+                response.Data = false;
+                return response;
+            }
+
+            _context.PlaylistSongs.Add(new CostaRicaMusicDAL.Entidades.PlaylistSong
+            {
+                PlaylistId = playlistId,
+                SongId = songId,
+                AddedAt = DateTime.UtcNow
+            });
+
+            await _context.SaveChangesAsync();
+
+            response.esCorrecto = true;
+            response.Data = true;
+            response.mensaje = "Cancion agregada a la playlist.";
+            return response;
+        }
+
+        public async Task<CustomResponse<bool>> EliminarCancionDePlaylistAsync(int playlistId, int songId, int userId)
         {
             var response = new CustomResponse<bool>();
 
@@ -325,6 +440,18 @@ namespace CostaRicaMusicBLL.Servicios.Playlists
                 response.esCorrecto = false;
                 response.mensaje = "La cancion no existe dentro de la playlist.";
                 response.codigoStatus = 404;
+                response.Data = false;
+                return response;
+            }
+
+            var playlist = await _context.Playlists
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.PlaylistId == playlistId);
+            if (playlist is null || playlist.UserId != userId)
+            {
+                response.esCorrecto = false;
+                response.mensaje = "No tienes permisos para modificar esta playlist.";
+                response.codigoStatus = 403;
                 response.Data = false;
                 return response;
             }
