@@ -268,6 +268,24 @@ main {
     gap: 1.2rem;
 }
 
+#songsPagination .page-link {
+    background: #1f1f1f;
+    border-color: #333;
+    color: #e6e6e6;
+}
+
+#songsPagination .page-item.active .page-link {
+    background: #1db954;
+    border-color: #1db954;
+    color: #fff;
+}
+
+#songsPagination .page-item.disabled .page-link {
+    background: #171717;
+    border-color: #2a2a2a;
+    color: #6f6f6f;
+}
+
 .music-card {
     background-color: #181818;
     border-radius: 0.75rem;
@@ -558,14 +576,14 @@ main {
     border-top: 1px solid #282828;
     padding: 0.5rem 1rem;
     z-index: 1030;
-    height: 80px; /* Un poco más alto para que se vea mejor */
+    height: 92px;
     color: #ffffff;
     box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.5);
 }
 
 /* Espacio en la parte inferior de la ventana */
 body {
-    padding-bottom: 80px; /* Mismo alto que la barra */
+    padding-bottom: 92px;
     margin-bottom: 0;
     min-height: 100vh;
 }
@@ -665,9 +683,6 @@ body {
 
 /* Controles principales */
 .player-controls {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
     display: flex;
     align-items: center;
     gap: 1rem;
@@ -675,6 +690,17 @@ body {
     padding: 0.3rem 1rem;
     border-radius: 40px;
     backdrop-filter: blur(5px);
+}
+
+.player-center-stack {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
 }
 
 .control-btn {
@@ -700,8 +726,7 @@ body {
 
 /* Barra de progreso del reproductor */
 .player-progress-wrap {
-    min-width: 120px;
-    max-width: 280px;
+    width: clamp(280px, 34vw, 520px);
 }
 
 .player-time-current, .player-time-total {
@@ -729,6 +754,71 @@ body {
     background: #1db954;
     width: 0%;
     transition: width 0.1s linear;
+}
+
+.player-volume-wrap {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-width: 170px;
+    justify-content: flex-end;
+}
+
+.player-volume-slider {
+    width: 120px;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    border-radius: 999px;
+    background: #555;
+    cursor: pointer;
+    transition: height 0.15s ease, background 0.15s ease;
+}
+
+.player-volume-slider:hover {
+    height: 6px;
+}
+
+.player-volume-slider::-webkit-slider-runnable-track {
+    height: 100%;
+    border-radius: 999px;
+    background: transparent;
+}
+
+.player-volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #fff;
+    border: none;
+    margin-top: -3px;
+}
+
+.player-volume-slider::-moz-range-track {
+    height: 4px;
+    border-radius: 999px;
+    background: #555;
+}
+
+.player-volume-slider::-moz-range-progress {
+    height: 4px;
+    border-radius: 999px;
+    background: #1db954;
+}
+
+.player-volume-slider::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #fff;
+    border: none;
+}
+
+.player-volume-slider:focus {
+    outline: none;
 }
 
 /* Botón de play especial */
@@ -778,6 +868,12 @@ body {
     .player-controls {
         gap: 0.3rem;
         padding: 0.2rem 0.5rem;
+    }
+
+    .player-center-stack {
+        position: static;
+        transform: none;
+        width: auto;
     }
 
     .control-btn {
@@ -1740,7 +1836,7 @@ input[type="file"].form-control::-webkit-file-upload-button:hover {
 /* Playlist Detail */
 .playlist-detail-page {
     min-height: calc(100vh - 80px);
-    background: linear-gradient(180deg, #7d1111 0%, #2b0a0a 38%, #121212 62%);
+    background: #121212;
     border-radius: 0.8rem;
     overflow: hidden;
 }
@@ -1750,6 +1846,7 @@ input[type="file"].form-control::-webkit-file-upload-button:hover {
     gap: 1.5rem;
     padding: 2rem 1.8rem;
     align-items: flex-end;
+    background: linear-gradient(180deg, #7d1111 0%, #2b0a0a 55%, #121212 100%);
 }
 
 .playlist-detail-cover {
@@ -1759,6 +1856,46 @@ input[type="file"].form-control::-webkit-file-upload-button:hover {
     border-radius: 0.6rem;
     overflow: hidden;
     box-shadow: 0 14px 35px rgba(0, 0, 0, 0.45);
+}
+
+.playlist-detail-cover.is-editable {
+    border: none;
+    padding: 0;
+    background: transparent;
+    cursor: pointer;
+    position: relative;
+}
+
+.playlist-detail-cover.is-editable .playlist-detail-cover-image,
+.playlist-detail-cover.is-editable .playlist-collage {
+    transition: filter 0.2s ease;
+}
+
+.playlist-cover-edit-overlay {
+    position: absolute;
+    inset: 0;
+    border-radius: 0.6rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.36);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+}
+
+.playlist-cover-edit-overlay i {
+    font-size: 1.15rem;
+}
+
+.playlist-detail-cover.is-editable:hover .playlist-cover-edit-overlay {
+    opacity: 1;
+}
+
+.playlist-detail-cover.is-editable:hover .playlist-detail-cover-image,
+.playlist-detail-cover.is-editable:hover .playlist-collage {
+    filter: brightness(0.72);
 }
 
 .playlist-detail-cover-image {

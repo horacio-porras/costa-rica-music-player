@@ -15,7 +15,7 @@
 </head>
 <body class="auth-page">
     <div class="auth-card">
-        <h1 class="auth-title">Welcome back</h1>
+        <h1 class="auth-title">Bienvenido de nuevo</h1>
 
         @if (ViewBag.Error != null)
         {
@@ -23,20 +23,20 @@
         }
 
         <form asp-action="Login" method="post" class="auth-form">
-            <label class="auth-label" asp-for="EmailOrUsername">Email or username</label>
-            <input asp-for="EmailOrUsername" class="auth-input" placeholder="name@domain.com" />
+            <label class="auth-label" asp-for="EmailOrUsername">Correo o usuario</label>
+            <input asp-for="EmailOrUsername" class="auth-input" placeholder="nombre@dominio.com" />
             <span asp-validation-for="EmailOrUsername" class="auth-validation"></span>
 
-            <label class="auth-label mt-3" asp-for="Password">Password</label>
-            <input asp-for="Password" type="password" class="auth-input" placeholder="Ingresa tu contrasena" />
+            <label class="auth-label mt-3" asp-for="Password">Contraseña</label>
+            <input asp-for="Password" type="password" class="auth-input" placeholder="Ingresa tu contraseña" />
             <span asp-validation-for="Password" class="auth-validation"></span>
 
-            <button type="submit" class="auth-main-btn mt-3">Continue</button>
+            <button type="submit" class="auth-main-btn mt-3">Continuar</button>
         </form>
 
-        <div class="auth-divider">or</div>
+        <div class="auth-divider">o</div>
 
-        <a asp-action="SignUp" class="auth-link-inline">Don't have an account?<br /><strong>Sign up</strong></a>
+        <a asp-action="SignUp" class="auth-link-inline">No tienes una cuenta?<br /><strong>Registrate</strong></a>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>

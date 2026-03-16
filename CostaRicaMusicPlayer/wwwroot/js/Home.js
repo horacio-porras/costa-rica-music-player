@@ -4,7 +4,10 @@
         artists: [],
         albums: [],
         playlists: [],
-        recommendedSongs: [],
+        filteredSongs: [],
+        currentDisplayedSongs: [],
+        pageSize: 9,
+        currentPage: 1,
         isAuthenticated: false,
         selectedPlaylistId: null,
 
@@ -26,22 +29,36 @@
             });
 
             // Reproducir canción al hacer clic en la card (excepto en artista/álbum)
-            $(document).on('click', '#recommendedSongsGrid .music-card', function(e) {
+            $(document).on('click', '#songsGrid .music-card', function(e) {
                 if ($(e.target).closest('.music-card-artist, .music-card-album').length) return;
                 const card = $(this);
                 const songId = card.data('song-id');
                 if (songId && window.Player) {
-                    const song = self.recommendedSongs.find(s => s.songId == songId);
-                    if (song) window.Player.reproducir(song, self.recommendedSongs);
+                    const song = self.currentDisplayedSongs.find(s => s.songId == songId);
+                    if (song) window.Player.reproducir(song, self.currentDisplayedSongs);
                 }
             });
 
             // Delegación de eventos para álbumes (en cards y en listas)
-            $(document).on('click', '.music-card-album, .artist-album-item', (e) => {
+            $(document).on('click', '.album-card, .music-card-album, .artist-album-item', (e) => {
                 const el = $(e.currentTarget);
-                const albumId = el.data('album-id');
+                const albumId = el.data('album-id') || el.closest('.album-card').data('album-id');
                 if (!albumId) return;
                 self.mostrarAlbum(albumId);
+            });
+
+            $('#txtBuscarCancion').on('input', () => {
+                const termino = ($('#txtBuscarCancion').val() || '').toLowerCase();
+                self.aplicarFiltroCanciones(termino);
+            });
+
+            $(document).on('click', '#songsPagination .page-link', function (e) {
+                e.preventDefault();
+                const page = Number($(this).data('page'));
+                if (!Number.isNaN(page) && page > 0) {
+                    self.currentPage = page;
+                    self.renderSongsPage();
+                }
             });
 
             $(document).on('click', '.home-library-item', function (event) {
@@ -81,6 +98,13 @@
                 const playlistId = $(this).closest('.home-library-item').data('playlist-id');
                 if (!playlistId) return;
                 self.eliminarPlaylistDesdeSidebar(playlistId);
+            });
+
+            $(document).on('click', '#homePlaylistDetailContainer .js-playlist-cover-edit', function (event) {
+                event.preventDefault();
+                const playlistId = Number($(this).attr('data-playlist-id'));
+                if (!playlistId) return;
+                self.cargarPlaylistEnModalEditar(playlistId);
             });
 
             $('#btnGuardarPlaylist').on('click', (event) => {
@@ -179,9 +203,9 @@
                 this.cargarAlbums(),
                 this.cargarPlaylists()
             ]).then(() => {
-                // Una vez cargados todos, mostrar los elementos aleatorios
-                this.mostrarCancionesRecomendadas();
-                this.mostrarArtistasRecomendados();
+                this.aplicarFiltroCanciones('');
+                this.pintarArtists(this.artists);
+                this.enriquecerAlbumsConArtistas();
                 this.mostrarSidebarPlaylists();
             });
         },
@@ -190,6 +214,8 @@
             return $.get('/Music/ObtenerSongs', result => {
                 if (result.esCorrecto) {
                     this.songs = result.data || [];
+                    this.filteredSongs = [...this.songs];
+                    this.currentDisplayedSongs = [...this.filteredSongs];
                 }
             });
         },
@@ -697,12 +723,15 @@
             detailContainer.html(`
                 <div class="playlist-detail-page home-embedded-detail">
                     <div class="playlist-detail-header">
-                        <div class="playlist-detail-cover">
+                        <button type="button" class="playlist-detail-cover is-editable js-playlist-cover-edit" data-playlist-id="${playlistId}" title="Editar playlist" aria-label="Editar playlist">
                             ${usaPortadaSeleccionada
                                 ? `<img src="${cover}" alt="${this.escapeHtml(playlist.name)}" class="playlist-detail-cover-image"
                                        onerror="this.onerror=null; this.src='/img/placeholder-cover.png';" />`
                                 : `<div class="playlist-collage">${collageMarkup}</div>`}
-                        </div>
+                            <span class="playlist-cover-edit-overlay">
+                                <i class="fas fa-pen"></i>
+                            </span>
+                        </button>
 
                         <div class="playlist-detail-info">
                             <p class="playlist-detail-type mb-1">Playlist publica</p>
@@ -753,6 +782,79 @@
 
             $('#homeDiscoveryContent').addClass('d-none');
             detailContainer.removeClass('d-none');
+            this.aplicarDegradadoHeaderPlaylist(detailContainer[0]);
+        },
+
+        async aplicarDegradadoHeaderPlaylist(containerElement) {
+            if (!containerElement) return;
+            const header = containerElement.querySelector('.playlist-detail-header');
+            if (!header) return;
+
+            const sourceImage = header.querySelector('.playlist-detail-cover-image')
+                || header.querySelector('.playlist-collage-item');
+            const src = sourceImage ? sourceImage.getAttribute('src') : null;
+            if (!src) return;
+
+            try {
+                const color = await this.obtenerColorDominante(src);
+                if (!color) return;
+                const dark = {
+                    r: Math.max(0, Math.round(color.r * 0.45)),
+                    g: Math.max(0, Math.round(color.g * 0.45)),
+                    b: Math.max(0, Math.round(color.b * 0.45))
+                };
+                header.style.background = `linear-gradient(180deg, rgba(${color.r}, ${color.g}, ${color.b}, 0.88) 0%, rgba(${dark.r}, ${dark.g}, ${dark.b}, 0.75) 55%, rgba(18, 18, 18, 0.92) 100%)`;
+            } catch (error) {
+                // Fallback silencioso al degradado CSS por defecto.
+            }
+        },
+
+        obtenerColorDominante(src) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        if (!ctx) {
+                            resolve(null);
+                            return;
+                        }
+
+                        const sampleSize = 24;
+                        canvas.width = sampleSize;
+                        canvas.height = sampleSize;
+                        ctx.drawImage(img, 0, 0, sampleSize, sampleSize);
+                        const { data } = ctx.getImageData(0, 0, sampleSize, sampleSize);
+
+                        let r = 0, g = 0, b = 0, count = 0;
+                        for (let i = 0; i < data.length; i += 4) {
+                            const alpha = data[i + 3];
+                            if (alpha < 80) continue;
+                            r += data[i];
+                            g += data[i + 1];
+                            b += data[i + 2];
+                            count++;
+                        }
+
+                        if (!count) {
+                            resolve(null);
+                            return;
+                        }
+
+                        resolve({
+                            r: Math.round(r / count),
+                            g: Math.round(g / count),
+                            b: Math.round(b / count)
+                        });
+                    } catch {
+                        resolve(null);
+                    }
+                };
+                img.onerror = () => resolve(null);
+                img.src = src;
+            });
         },
 
         async eliminarCancionDePlaylistEmbebida(playlistId, songId) {
@@ -829,18 +931,97 @@
             }
         },
 
-        mostrarCancionesRecomendadas() {
-            const grid = $('#recommendedSongsGrid');
+        aplicarFiltroCanciones(termino) {
+            const texto = (termino || '').toLowerCase();
+            this.filteredSongs = this.songs.filter(s => {
+                const t = (s.title || '').toLowerCase();
+                const a = (s.artistName || '').toLowerCase();
+                const alb = (s.albumTitle || '').toLowerCase();
+                return t.includes(texto) || a.includes(texto) || alb.includes(texto);
+            });
+            this.currentPage = 1;
+            this.renderSongsPage();
+
+            const filtradosArtists = this.artists.filter(a =>
+                (a.name || '').toLowerCase().includes(texto)
+            );
+            this.pintarArtists(filtradosArtists);
+
+            const filtradosAlbums = this.albums.filter(alb => {
+                const title = (alb.title || '').toLowerCase();
+                const artist = (alb.artistName || '').toLowerCase();
+                return title.includes(texto) || artist.includes(texto);
+            });
+            this.pintarAlbums(filtradosAlbums);
+        },
+
+        renderSongsPage() {
+            const total = this.filteredSongs.length;
+            const totalPages = Math.max(1, Math.ceil(total / this.pageSize));
+            this.currentPage = Math.min(Math.max(1, this.currentPage), totalPages);
+
+            const start = (this.currentPage - 1) * this.pageSize;
+            const pageSongs = this.filteredSongs.slice(start, start + this.pageSize);
+            this.currentDisplayedSongs = [...this.filteredSongs];
+            this.pintarSongs(pageSongs);
+            this.renderSongsPagination(totalPages, total, start);
+        },
+
+        renderSongsPagination(totalPages, totalSongs, startIndex) {
+            const ul = $('#songsPagination');
+            const info = $('#songsPaginationInfo');
+            ul.empty();
+
+            if (totalSongs === 0) {
+                info.text('0 canciones');
+                return;
+            }
+
+            const endIndex = Math.min(startIndex + this.pageSize, totalSongs);
+            info.text(`Mostrando ${startIndex + 1}-${endIndex} de ${totalSongs} canciones`);
+
+            const prevDisabled = this.currentPage === 1 ? ' disabled' : '';
+            ul.append(`
+                <li class="page-item${prevDisabled}">
+                    <a class="page-link" href="#" data-page="${this.currentPage - 1}" aria-label="Anterior">&laquo;</a>
+                </li>
+            `);
+
+            const maxPagesToShow = 5;
+            const half = Math.floor(maxPagesToShow / 2);
+            let startPage = Math.max(1, this.currentPage - half);
+            let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+            if (endPage - startPage + 1 < maxPagesToShow) {
+                startPage = Math.max(1, endPage - maxPagesToShow + 1);
+            }
+
+            for (let page = startPage; page <= endPage; page++) {
+                const active = page === this.currentPage ? ' active' : '';
+                ul.append(`
+                    <li class="page-item${active}">
+                        <a class="page-link" href="#" data-page="${page}">${page}</a>
+                    </li>
+                `);
+            }
+
+            const nextDisabled = this.currentPage === totalPages ? ' disabled' : '';
+            ul.append(`
+                <li class="page-item${nextDisabled}">
+                    <a class="page-link" href="#" data-page="${this.currentPage + 1}" aria-label="Siguiente">&raquo;</a>
+                </li>
+            `);
+        },
+
+        pintarSongs(songs) {
+            const grid = $('#songsGrid');
             grid.empty();
 
-            this.recommendedSongs = this.obtenerElementosAleatorios(this.songs, 8);
-
-            if (this.recommendedSongs.length === 0) {
+            if (!songs || songs.length === 0) {
                 grid.append('<div class="text-secondary">No hay canciones disponibles</div>');
                 return;
             }
 
-            this.recommendedSongs.forEach(song => {
+            songs.forEach(song => {
                 const cover = song.coverImageUrl || song.albumCoverImageUrl || '/img/placeholder-album.avif';
                 const artistName = song.artistName || 'Artista desconocido';
 
@@ -873,18 +1054,16 @@
             });
         },
 
-        mostrarArtistasRecomendados() {
-            const grid = $('#recommendedArtistsGrid');
-            grid.empty();
+        pintarArtists(artists) {
+            const contenedor = $('#listaArtistas');
+            contenedor.empty();
 
-            const artistasRandom = this.obtenerElementosAleatorios(this.artists, 6);
-
-            if (artistasRandom.length === 0) {
-                grid.append('<div class="text-secondary">No hay artistas disponibles</div>');
+            if (!artists || artists.length === 0) {
+                contenedor.append('<div class="text-secondary">No hay artistas disponibles</div>');
                 return;
             }
 
-            artistasRandom.forEach(artist => {
+            artists.forEach(artist => {
                 const image = artist.imageUrl || '/img/placeholder-artist.png';
                 const card = `
                     <div class="artist-card" data-artist-id="${artist.artistId || artist.id || ''}">
@@ -895,7 +1074,56 @@
                             <div class="artist-name" data-artist-id="${artist.artistId || artist.id || ''}" title="${artist.name}">${artist.name}</div>
                         </div>
                     </div>`;
-                grid.append(card);
+                contenedor.append(card);
+            });
+        },
+
+        enriquecerAlbumsConArtistas() {
+            if (!this.albums || this.albums.length === 0) return;
+
+            this.albums = this.albums.map(album => {
+                if (album.artistName && album.artistName.length > 0) {
+                    return album;
+                }
+
+                const artist = this.artists.find(a => a.artistId === album.artistId);
+                return {
+                    ...album,
+                    artistName: artist ? artist.name : (album.artistName || '')
+                };
+            });
+
+            this.pintarAlbums(this.albums);
+        },
+
+        pintarAlbums(albums) {
+            const contenedor = $('#listaAlbums');
+            contenedor.empty();
+
+            if (!albums || albums.length === 0) {
+                contenedor.append('<div class="text-secondary">No hay álbumes disponibles</div>');
+                return;
+            }
+
+            albums.forEach(album => {
+                const image = album.coverImageUrl || '/img/placeholder-album.avif';
+                const yearText = album.releaseYear ? `${album.releaseYear}` : '';
+                const artistName = album.artistName || '';
+                const subtitle = artistName && yearText
+                    ? `${artistName} · ${yearText}`
+                    : (artistName || yearText || '');
+
+                const item = `
+                    <div class="album-card" data-album-id="${album.albumId}">
+                        <div class="album-cover">
+                            <img src="${image}" alt="${album.title}" onerror="this.src='/img/placeholder-album.avif';" />
+                        </div>
+                        <div class="album-info">
+                            <div class="album-title" title="${album.title}">${album.title}</div>
+                            <div class="album-subtitle text-secondary small">${subtitle}</div>
+                        </div>
+                    </div>`;
+                contenedor.append(item);
             });
         },
 

@@ -18,7 +18,7 @@ namespace CostaRicaMusicPlayer.Controllers
         {
             if (HttpContext.Session.GetInt32("UserId").HasValue)
             {
-                return RedirectToAction("Index", "Playlists");
+                return RedirectToAction("Index", "Home");
             }
             return View(new LoginDto());
         }
@@ -40,7 +40,7 @@ namespace CostaRicaMusicPlayer.Controllers
 
             HttpContext.Session.SetInt32("UserId", response.Data.UserId);
             HttpContext.Session.SetString("Username", response.Data.Username);
-            return RedirectToAction("Index", "Playlists");
+            return RedirectToAction("Index", "Home");
         }
 
         [HttpGet]
@@ -48,7 +48,7 @@ namespace CostaRicaMusicPlayer.Controllers
         {
             if (HttpContext.Session.GetInt32("UserId").HasValue)
             {
-                return RedirectToAction("Index", "Playlists");
+                return RedirectToAction("Index", "Home");
             }
             return View(new RegisterDto());
         }
@@ -70,7 +70,7 @@ namespace CostaRicaMusicPlayer.Controllers
 
             HttpContext.Session.SetInt32("UserId", response.Data.UserId);
             HttpContext.Session.SetString("Username", response.Data.Username);
-            return RedirectToAction("Index", "Playlists");
+            return RedirectToAction("Index", "Home");
         }
 
         [HttpPost]

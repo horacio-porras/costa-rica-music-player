@@ -11,13 +11,16 @@
         currentIndex: -1,
         isShuffle: false,
         isRepeat: false,
+        volume: 0.8,
 
         init() {
             this.audio = document.getElementById('mainAudio');
             if (!this.audio) return;
+            this.audio.volume = this.volume;
 
             this.registrarEventos();
             this.restaurarEstado();
+            this.actualizarUIVolumen();
             window.addEventListener('beforeunload', () => this.guardarEstado());
             document.addEventListener('visibilitychange', () => {
                 if (document.hidden) this.guardarEstado();
@@ -35,7 +38,8 @@
                 playlist: this.playlist,
                 currentIndex: this.currentIndex,
                 isShuffle: this.isShuffle,
-                isRepeat: this.isRepeat
+                isRepeat: this.isRepeat,
+                volume: this.audio.volume
             };
             try {
                 sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -53,6 +57,11 @@
                 this.currentIndex = Math.min(state.currentIndex ?? 0, Math.max(0, this.playlist.length - 1));
                 this.isShuffle = !!state.isShuffle;
                 this.isRepeat = !!state.isRepeat;
+                this.volume = (typeof state.volume === 'number')
+                    ? Math.min(1, Math.max(0, state.volume))
+                    : this.volume;
+                this.audio.volume = this.volume;
+                this.actualizarUIVolumen();
 
                 const s = state.song;
                 const seekTo = Math.max(0, state.currentTime || 0);
@@ -106,12 +115,30 @@
             $('#btnAddSongToPlaylist').on('click', async () => {
                 await self.agregarCancionAPlaylistActual();
             });
+            $('#playerVolumeRange').on('input change', function () {
+                const raw = Number($(this).val());
+                const value = Number.isNaN(raw) ? 80 : raw;
+                self.audio.volume = Math.min(1, Math.max(0, value / 100));
+                self.volume = self.audio.volume;
+                self.actualizarUIVolumen();
+                self.guardarEstado();
+            });
 
             $('#playerProgressBar').on('click', function(e) {
                 const bar = $(this);
                 const frac = (e.offsetX / bar.outerWidth()) || 0;
                 self.seek(frac);
             });
+        },
+
+        actualizarUIVolumen() {
+            const slider = document.getElementById('playerVolumeRange');
+            if (slider) {
+                const value = Math.round((this.audio?.volume ?? this.volume) * 100);
+                slider.value = String(value);
+                // Misma lógica visual que la barra de progreso: base gris + tramo verde.
+                slider.style.background = `linear-gradient(to right, #1db954 0%, #1db954 ${value}%, #555 ${value}%, #555 100%)`;
+            }
         },
 
         /**

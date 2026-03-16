@@ -20,31 +20,51 @@
 
     <div class="home-page">
         <div id="homeDiscoveryContent">
-            <!-- Sección de Canciones Recomendadas -->
-            <section class="home-section">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h2 class="section-title">Canciones Recomendadas</h2>
-                    <a asp-controller="Music" asp-action="Index" class="view-all-link">
-                        Ver todas <i class="bi bi-arrow-right"></i>
-                    </a>
+            <div class="music-page px-0 pt-0">
+                <div class="music-header d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h1 class="music-title mb-1">Explora la música</h1>
+                        <p class="music-subtitle mb-0">Canciones y artistas de Costa Rica Music</p>
+                    </div>
+                    <div class="music-search input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" class="form-control" id="txtBuscarCancion" placeholder="Buscar canción, álbum o artista..." />
+                    </div>
                 </div>
-                <div id="recommendedSongsGrid" class="home-grid">
-                    <!-- Canciones cargadas por JS -->
-                </div>
-            </section>
 
-            <!-- Sección de Artistas Recomendados -->
-            <section class="home-section">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h2 class="section-title">Artistas Recomendados</h2>
-                    <a asp-controller="Music" asp-action="Index" class="view-all-link">
-                        Ver todos <i class="bi bi-arrow-right"></i>
-                    </a>
+                <div class="row music-layout">
+                    <div class="col-lg-7 col-md-12">
+                        <h2 class="section-title">Canciones</h2>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <small id="songsPaginationInfo" class="text-secondary"></small>
+                            <nav aria-label="Paginación de canciones">
+                                <ul id="songsPagination" class="pagination pagination-sm mb-0"></ul>
+                            </nav>
+                        </div>
+                        <div id="songsGrid" class="music-grid">
+                            <!-- Canciones cargadas por JS -->
+                        </div>
+                    </div>
+
+                    <div class="col-lg-5 col-md-12">
+                        <div class="side-section mb-4">
+                            <h2 class="section-title">Artistas</h2>
+                            <div id="listaArtistas" class="artists-list">
+                                <!-- Artistas cargados por JS -->
+                            </div>
+                        </div>
+
+                        <div class="side-section">
+                            <h2 class="section-title">Álbumes</h2>
+                            <div id="listaAlbums" class="albums-list">
+                                <!-- Álbumes cargados por JS -->
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div id="recommendedArtistsGrid" class="home-artists-grid">
-                    <!-- Artistas cargados por JS -->
-                </div>
-            </section>
+            </div>
         </div>
 
         <div id="homePlaylistDetailContainer" class="home-playlist-detail-container d-none">

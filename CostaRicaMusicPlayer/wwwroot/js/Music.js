@@ -4,6 +4,9 @@
         artists: [],
         albums: [],
         currentDisplayedSongs: [],
+        filteredSongs: [],
+        pageSize: 10,
+        currentPage: 1,
 
         init() {
             this.cargarSongs();
@@ -63,13 +66,25 @@
 
                 self.mostrarAlbum(albumId);
             });
+
+            $(document).on('click', '#songsPagination .page-link', function (e) {
+                e.preventDefault();
+                const page = Number($(this).data('page'));
+                if (!Number.isNaN(page) && page > 0) {
+                    self.currentPage = page;
+                    self.renderSongsPage();
+                }
+            });
         },
 
         cargarSongs() {
             $.get('/Music/ObtenerSongs', result => {
                 if (result.esCorrecto) {
                     this.songs = result.data || [];
-                    this.pintarSongs(this.songs);
+                    this.filteredSongs = [...this.songs];
+                    this.currentDisplayedSongs = [...this.filteredSongs];
+                    this.currentPage = 1;
+                    this.renderSongsPage();
                 }
             });
         },
@@ -101,7 +116,6 @@
         },
 
         pintarSongs(songs) {
-            this.currentDisplayedSongs = songs || [];
             const grid = $('#songsGrid');
             grid.empty();
 
@@ -139,13 +153,73 @@
             });
         },
 
+        renderSongsPage() {
+            const total = this.filteredSongs.length;
+            const totalPages = Math.max(1, Math.ceil(total / this.pageSize));
+            this.currentPage = Math.min(Math.max(1, this.currentPage), totalPages);
+
+            const start = (this.currentPage - 1) * this.pageSize;
+            const pageSongs = this.filteredSongs.slice(start, start + this.pageSize);
+
+            this.currentDisplayedSongs = [...this.filteredSongs];
+            this.pintarSongs(pageSongs);
+            this.renderSongsPagination(totalPages, total, start);
+        },
+
+        renderSongsPagination(totalPages, totalSongs, startIndex) {
+            const ul = $('#songsPagination');
+            const info = $('#songsPaginationInfo');
+            ul.empty();
+
+            if (totalSongs === 0) {
+                info.text('0 canciones');
+                return;
+            }
+
+            const endIndex = Math.min(startIndex + this.pageSize, totalSongs);
+            info.text(`Mostrando ${startIndex + 1}-${endIndex} de ${totalSongs} canciones`);
+
+            const prevDisabled = this.currentPage === 1 ? ' disabled' : '';
+            ul.append(`
+                <li class="page-item${prevDisabled}">
+                    <a class="page-link" href="#" data-page="${this.currentPage - 1}" aria-label="Anterior">&laquo;</a>
+                </li>
+            `);
+
+            const maxPagesToShow = 5;
+            const half = Math.floor(maxPagesToShow / 2);
+            let startPage = Math.max(1, this.currentPage - half);
+            let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+            if (endPage - startPage + 1 < maxPagesToShow) {
+                startPage = Math.max(1, endPage - maxPagesToShow + 1);
+            }
+
+            for (let page = startPage; page <= endPage; page++) {
+                const active = page === this.currentPage ? ' active' : '';
+                ul.append(`
+                    <li class="page-item${active}">
+                        <a class="page-link" href="#" data-page="${page}">${page}</a>
+                    </li>
+                `);
+            }
+
+            const nextDisabled = this.currentPage === totalPages ? ' disabled' : '';
+            ul.append(`
+                <li class="page-item${nextDisabled}">
+                    <a class="page-link" href="#" data-page="${this.currentPage + 1}" aria-label="Siguiente">&raquo;</a>
+                </li>
+            `);
+        },
+
         filtrar(termino) {
             const filtradasSongs = this.songs.filter(s => {
                 const t = (s.title || '').toLowerCase();
                 const a = (s.artistName || '').toLowerCase();
                 return t.includes(termino) || a.includes(termino);
             });
-            this.pintarSongs(filtradasSongs);
+            this.filteredSongs = filtradasSongs;
+            this.currentPage = 1;
+            this.renderSongsPage();
 
             const filtradosArtists = this.artists.filter(a =>
                 a.name && a.name.toLowerCase().includes(termino)

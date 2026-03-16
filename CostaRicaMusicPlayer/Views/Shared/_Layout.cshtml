@@ -26,12 +26,6 @@
                     <ul class="navbar-nav">
                         @if (Context.Session.GetInt32("UserId").HasValue)
                         {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">Inicio</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Music" asp-action="Index">Música</a>
-                            </li>
                             <li class="nav-item d-flex align-items-center me-2 text-secondary small">
                                 @Context.Session.GetString("Username")
                             </li>
@@ -44,7 +38,7 @@
                         else
                         {
                             <li class="nav-item">
-                                <a class="nav-link nav-login-pill" asp-controller="Account" asp-action="Login">Log in</a>
+                                <a class="nav-link nav-login-pill" asp-controller="Account" asp-action="Login">Iniciar sesión</a>
                             </li>
                         }
                     </ul>
@@ -81,23 +75,30 @@
                 </div>
             </div>
 
-            <div class="player-progress-wrap flex-grow-1 mx-3 d-none d-md-flex align-items-center">
-                <span class="player-time-current small text-secondary" id="playerTimeCurrent">0:00</span>
-                <div class="player-progress-bar" id="playerProgressBar">
-                    <div class="player-progress-fill" id="playerProgressFill"></div>
+            <div class="player-center-stack">
+                <div class="player-controls">
+                    <button type="button" class="control-btn" id="btnShuffle" title="Aleatorio"><i class="fas fa-random"></i></button>
+                    <button type="button" class="control-btn" id="btnPrev" title="Anterior"><i class="fas fa-step-backward"></i></button>
+                    <button type="button" class="control-btn play-btn" id="btnPlayPause" title="Reproducir/Pausar">
+                        <i class="fas fa-play-circle fa-3x"></i>
+                    </button>
+                    <button type="button" class="control-btn" id="btnNext" title="Siguiente"><i class="fas fa-step-forward"></i></button>
+                    <button type="button" class="control-btn" id="btnRepeat" title="Repetir"><i class="fas fa-redo-alt"></i></button>
+                    <button type="button" class="control-btn" id="btnRestart" title="Reiniciar canción"><i class="fas fa-undo-alt"></i></button>
                 </div>
-                <span class="player-time-total small text-secondary" id="playerTimeTotal">0:00</span>
+
+                <div class="player-progress-wrap d-none d-md-flex align-items-center">
+                    <span class="player-time-current small text-secondary" id="playerTimeCurrent">0:00</span>
+                    <div class="player-progress-bar" id="playerProgressBar">
+                        <div class="player-progress-fill" id="playerProgressFill"></div>
+                    </div>
+                    <span class="player-time-total small text-secondary" id="playerTimeTotal">0:00</span>
+                </div>
             </div>
 
-            <div class="player-controls">
-                <button type="button" class="control-btn" id="btnShuffle" title="Aleatorio"><i class="fas fa-random"></i></button>
-                <button type="button" class="control-btn" id="btnPrev" title="Anterior"><i class="fas fa-step-backward"></i></button>
-                <button type="button" class="control-btn play-btn" id="btnPlayPause" title="Reproducir/Pausar">
-                    <i class="fas fa-play-circle fa-3x"></i>
-                </button>
-                <button type="button" class="control-btn" id="btnNext" title="Siguiente"><i class="fas fa-step-forward"></i></button>
-                <button type="button" class="control-btn" id="btnRepeat" title="Repetir"><i class="fas fa-redo-alt"></i></button>
-                <button type="button" class="control-btn" id="btnRestart" title="Reiniciar canción"><i class="fas fa-undo-alt"></i></button>
+            <div class="player-volume-wrap d-none d-md-flex">
+                <i class="fas fa-volume-up text-secondary"></i>
+                <input type="range" id="playerVolumeRange" class="player-volume-slider" min="0" max="100" value="80" step="1" aria-label="Volumen" />
             </div>
         </div>
     </div>

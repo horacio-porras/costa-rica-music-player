@@ -15,7 +15,7 @@
 </head>
 <body class="auth-page">
     <div class="auth-card">
-        <h1 class="auth-title">Sign up to start listening</h1>
+        <h1 class="auth-title">Registrate para comenzar a escuchar</h1>
 
         @if (ViewBag.Error != null)
         {
@@ -23,24 +23,24 @@
         }
 
         <form asp-action="SignUp" method="post" class="auth-form">
-            <label class="auth-label" asp-for="Email">Email address</label>
-            <input asp-for="Email" class="auth-input" placeholder="name@domain.com" />
+            <label class="auth-label" asp-for="Email">Correo electronico</label>
+            <input asp-for="Email" class="auth-input" placeholder="nombre@dominio.com" />
             <span asp-validation-for="Email" class="auth-validation"></span>
 
-            <label class="auth-label mt-3" asp-for="Username">Username</label>
+            <label class="auth-label mt-3" asp-for="Username">Usuario</label>
             <input asp-for="Username" class="auth-input" placeholder="Tu usuario" />
             <span asp-validation-for="Username" class="auth-validation"></span>
 
-            <label class="auth-label mt-3" asp-for="Password">Password</label>
+            <label class="auth-label mt-3" asp-for="Password">Contraseña</label>
             <input asp-for="Password" type="password" class="auth-input" placeholder="Minimo 6 caracteres" />
             <span asp-validation-for="Password" class="auth-validation"></span>
 
-            <button type="submit" class="auth-main-btn mt-3">Next</button>
+            <button type="submit" class="auth-main-btn mt-3">Crear cuenta</button>
         </form>
 
-        <div class="auth-divider">or</div>
+        <div class="auth-divider">o</div>
 
-        <a asp-action="Login" class="auth-link-inline">Already have an account?<br /><strong>Log in</strong></a>
+        <a asp-action="Login" class="auth-link-inline">Ya tienes una cuenta?<br /><strong>Inicia sesion</strong></a>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>

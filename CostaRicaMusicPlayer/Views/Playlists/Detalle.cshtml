@@ -165,6 +165,59 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         (function () {
+            const header = document.querySelector('.playlist-detail-header');
+            if (!header) return;
+
+            const sourceImage = header.querySelector('.playlist-detail-cover-image')
+                || header.querySelector('.playlist-collage-item');
+            const src = sourceImage ? sourceImage.getAttribute('src') : null;
+            if (!src) return;
+
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = function () {
+                try {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) return;
+
+                    const sampleSize = 24;
+                    canvas.width = sampleSize;
+                    canvas.height = sampleSize;
+                    ctx.drawImage(img, 0, 0, sampleSize, sampleSize);
+
+                    const imageData = ctx.getImageData(0, 0, sampleSize, sampleSize).data;
+                    let r = 0, g = 0, b = 0, count = 0;
+
+                    for (let i = 0; i < imageData.length; i += 4) {
+                        const alpha = imageData[i + 3];
+                        if (alpha < 80) continue;
+                        r += imageData[i];
+                        g += imageData[i + 1];
+                        b += imageData[i + 2];
+                        count++;
+                    }
+
+                    if (count === 0) return;
+
+                    r = Math.round(r / count);
+                    g = Math.round(g / count);
+                    b = Math.round(b / count);
+
+                    const darkR = Math.max(0, Math.round(r * 0.45));
+                    const darkG = Math.max(0, Math.round(g * 0.45));
+                    const darkB = Math.max(0, Math.round(b * 0.45));
+
+                    header.style.background = `linear-gradient(180deg, rgba(${r}, ${g}, ${b}, 0.88) 0%, rgba(${darkR}, ${darkG}, ${darkB}, 0.75) 55%, rgba(18, 18, 18, 0.92) 100%)`;
+                } catch {
+                    // Fallback al estilo por defecto del CSS.
+                }
+            };
+            img.src = src;
+        })();
+    </script>
+    <script>
+        (function () {
             var playlistSongs = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Songs.Select(c => new {
                 songId = c.SongId,
                 title = c.Title,
