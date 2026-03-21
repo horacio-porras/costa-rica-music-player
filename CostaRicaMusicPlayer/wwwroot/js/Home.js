@@ -28,9 +28,18 @@
                 self.mostrarArtist(artistId);
             });
 
+            $(document).on('click', '.music-card-add-playlist-btn', async function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const songId = $(this).data('song-id');
+                if (!songId || !window.Player) return;
+                const song = self.currentDisplayedSongs.find(s => s.songId == songId);
+                if (song) await window.Player.agregarCancionAPlaylist(song);
+            });
+
             // Reproducir canción al hacer clic en la card (excepto en artista/álbum)
             $(document).on('click', '#songsGrid .music-card', function(e) {
-                if ($(e.target).closest('.music-card-artist, .music-card-album').length) return;
+                if ($(e.target).closest('.music-card-artist, .music-card-album, .music-card-add-playlist-btn').length) return;
                 const card = $(this);
                 const songId = card.data('song-id');
                 if (songId && window.Player) {
@@ -192,6 +201,29 @@
                 const playlistId = Number(event?.detail?.playlistId);
                 if (!playlistId) return;
                 self.actualizarContadorPlaylistSidebar(playlistId);
+            });
+
+            $(document).on('click', '.js-add-songs-to-playlist', function (e) {
+                e.preventDefault();
+                const playlistId = Number($(this).data('playlist-id'));
+                const playlistName = $(this).data('playlist-name') || 'Playlist';
+                if (!playlistId) return;
+                self.abrirModalAgregarCanciones(playlistId, playlistName);
+            });
+
+            $('#modalAddSongsSearch').on('input', function () {
+                const termino = ($(this).val() || '').toLowerCase();
+                self.filtrarModalAgregarCanciones(termino);
+            });
+
+            $(document).on('click', '.add-songs-modal-add-btn', async function (e) {
+                e.preventDefault();
+                const btn = $(this);
+                if (btn.prop('disabled')) return;
+                const songId = Number(btn.data('song-id'));
+                const playlistId = Number($('#modalAddSongsToPlaylist').data('playlist-id'));
+                if (!songId || !playlistId) return;
+                await self.agregarCancionDesdeModal(playlistId, songId, btn);
             });
         },
 
@@ -652,6 +684,142 @@
             $('.home-library-item').removeClass('is-active');
         },
 
+        abrirModalAgregarCanciones(playlistId, playlistName) {
+            const playlistSongs = $('#homePlaylistDetailContainer').data('playlist-songs') || [];
+            const idsEnPlaylist = new Set(playlistSongs.map(s => Number(s.songId)).filter(Boolean));
+
+            $('#modalAddSongsToPlaylistTitle').text(`Agregar canciones a "${playlistName}"`);
+            $('#modalAddSongsToPlaylist').data('playlist-id', playlistId);
+            $('#modalAddSongsToPlaylist').data('ids-en-playlist', idsEnPlaylist);
+            $('#modalAddSongsSearch').val('');
+
+            this.modalAddSongsAll = this.songs || [];
+            this.renderizarListaModalAgregarCanciones(this.modalAddSongsAll, idsEnPlaylist);
+
+            const modalEl = document.getElementById('modalAddSongsToPlaylist');
+            if (modalEl) {
+                const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                modal.show();
+            }
+        },
+
+        renderizarListaModalAgregarCanciones(songs, idsEnPlaylist) {
+            const list = $('#modalAddSongsList');
+            list.empty();
+
+            if (!songs || songs.length === 0) {
+                list.append('<div class="text-secondary py-4 text-center">No hay canciones disponibles.</div>');
+                return;
+            }
+
+            songs.forEach(song => {
+                const songId = Number(song.songId);
+                const yaAgregada = idsEnPlaylist && idsEnPlaylist.has(songId);
+                const cover = song.coverImageUrl || song.albumCoverImageUrl || '/img/placeholder-album.avif';
+                const artistName = song.artistName || 'Artista desconocido';
+
+                const row = `
+                    <div class="add-songs-modal-row ${yaAgregada ? 'added' : ''}" data-song-id="${songId}">
+                        <img src="${cover}" alt="" class="add-songs-modal-cover" onerror="this.src='/img/placeholder-album.avif';" />
+                        <div class="add-songs-modal-info">
+                            <div class="add-songs-modal-title">${this.escapeHtml(song.title || 'Sin título')}</div>
+                            <div class="add-songs-modal-artist">${this.escapeHtml(artistName)}</div>
+                        </div>
+                        <span class="add-songs-modal-duration">${this.formatearDuracion(song.duration)}</span>
+                        <button type="button" class="add-songs-modal-add-btn" data-song-id="${songId}" ${yaAgregada ? 'disabled' : ''} title="${yaAgregada ? 'Ya en la playlist' : 'Agregar'}">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                `;
+                list.append(row);
+            });
+        },
+
+        filtrarModalAgregarCanciones(termino) {
+            const all = this.modalAddSongsAll || [];
+            const idsEnPlaylist = $('#modalAddSongsToPlaylist').data('ids-en-playlist') || new Set();
+
+            if (!termino || termino.trim() === '') {
+                this.renderizarListaModalAgregarCanciones(all, idsEnPlaylist);
+                return;
+            }
+
+            const filtradas = all.filter(s => {
+                const t = (s.title || '').toLowerCase();
+                const a = (s.artistName || '').toLowerCase();
+                const alb = (s.albumTitle || '').toLowerCase();
+                return t.includes(termino) || a.includes(termino) || alb.includes(termino);
+            });
+            this.renderizarListaModalAgregarCanciones(filtradas, idsEnPlaylist);
+        },
+
+        async agregarCancionDesdeModal(playlistId, songId, btnElement) {
+            const btn = $(btnElement);
+
+            try {
+                const body = new URLSearchParams({
+                    playlistId: String(playlistId),
+                    songId: String(songId)
+                });
+
+                const response = await fetch('/Playlists/AgregarCancionAPlaylist', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                    },
+                    body
+                });
+
+                const result = await response.json();
+                if (result && result.esCorrecto) {
+                    const idsEnPlaylist = $('#modalAddSongsToPlaylist').data('ids-en-playlist') || new Set();
+                    idsEnPlaylist.add(songId);
+                    $('#modalAddSongsToPlaylist').data('ids-en-playlist', idsEnPlaylist);
+
+                    btn.closest('.add-songs-modal-row').addClass('added');
+                    btn.prop('disabled', true);
+                    btn.find('i').removeClass('fa-plus').addClass('fa-check');
+
+                    this.actualizarContadorPlaylistSidebar(playlistId);
+                    document.dispatchEvent(new CustomEvent('playlist-song-added', {
+                        detail: { playlistId, songId }
+                    }));
+
+                    if (Number(this.selectedPlaylistId) === Number(playlistId)) {
+                        this.cargarDetallePlaylistEmbebido(playlistId);
+                    }
+                    return;
+                }
+
+                const mensaje = (result && result.mensaje) ? result.mensaje : 'No se pudo agregar la canción.';
+                if (typeof Swal !== 'undefined') {
+                    await Swal.fire({
+                        title: 'No se pudo agregar',
+                        text: mensaje,
+                        icon: 'error',
+                        background: '#232323',
+                        color: '#f3f3f3',
+                        confirmButtonColor: '#1db954'
+                    });
+                } else {
+                    alert(mensaje);
+                }
+            } catch (error) {
+                if (typeof Swal !== 'undefined') {
+                    await Swal.fire({
+                        title: 'Error de conexión',
+                        text: 'No se pudo conectar con el servidor.',
+                        icon: 'error',
+                        background: '#232323',
+                        color: '#f3f3f3',
+                        confirmButtonColor: '#1db954'
+                    });
+                } else {
+                    alert('No se pudo conectar con el servidor.');
+                }
+            }
+        },
+
         renderizarDetallePlaylistEmbebido(playlist) {
             const detailContainer = $('#homePlaylistDetailContainer');
             const playlistId = Number(playlist.playlistId || 0);
@@ -747,9 +915,12 @@
                     </div>
 
                     <div class="playlist-detail-body">
-                        <div class="playlist-detail-toolbar">
+                        <div class="playlist-detail-toolbar d-flex justify-content-between align-items-center">
                             <button type="button" class="btn-playlist-back" id="btnVolverHomeDiscovery">
                                 <i class="fas fa-arrow-left me-2"></i>Volver
+                            </button>
+                            <button type="button" class="btn-spotify btn-sm js-add-songs-to-playlist" data-playlist-id="${playlistId}" data-playlist-name="${this.escapeHtml(playlist.name)}">
+                                <i class="fas fa-plus me-2"></i>Agregar canciones
                             </button>
                         </div>
 
@@ -1028,15 +1199,18 @@
                 const albumTitle = song.albumTitle || '';
                 const albumId = song.albumId || '';
 
-                // Construir el HTML del subtítulo: mostrar punto y álbum sólo si existe albumTitle
+                // Construir el HTML del subtítulo: artista y álbum en líneas separadas
                 let subtitleHtml = `<span class="music-card-artist" data-artist-id="${song.artistId || ''}" title="${artistName}">${artistName}</span>`;
                 if (albumTitle && albumTitle.length > 0) {
-                    subtitleHtml += ` <span class="music-card-dot">•</span> <span class="music-card-album" data-album-id="${albumId}" title="${albumTitle}">${albumTitle}</span>`;
+                    subtitleHtml += `<span class="music-card-album" data-album-id="${albumId}" title="${albumTitle}">${albumTitle}</span>`;
                 }
 
                 const card = `
                     <div class="music-card" data-song-id="${song.songId}">
                         <div class="music-card-cover">
+                            <button type="button" class="music-card-add-playlist-btn" title="Agregar a playlist" aria-label="Agregar a playlist" data-song-id="${song.songId}">
+                                <i class="fas fa-plus"></i>
+                            </button>
                             <div class="music-card-play-overlay"><i class="fas fa-play-circle"></i></div>
                             <img src="${cover}" alt="${song.title}" onerror="this.src='/img/placeholder-album.avif';" />
                         </div>
@@ -1192,13 +1366,20 @@
             if (songs.length === 0) {
                 listSongs.append('<li class="list-group-item text-secondary">No hay canciones</li>');
             } else {
-                songs.forEach(song => {
+                $('#artistModal').data('modal-songs', songs);
+                songs.forEach((song, index) => {
                     listSongs.append(`
-                        <li class="list-group-item d-flex justify-content-between">
-                            <span>${song.title}</span>
-                            <span class="text-secondary small">
-                                ${this.formatearDuracion(song.duration)}
-                            </span>
+                        <li class="list-group-item d-flex justify-content-between align-items-center media-modal-song-item" data-song-index="${index}">
+                            <div class="d-flex flex-grow-1 align-items-center media-modal-song-play" style="cursor:pointer;min-width:0;">
+                                <span class="text-truncate">${this.escapeHtml(song.title || 'Sin título')}</span>
+                            </div>
+                            <span class="text-secondary small flex-shrink-0">${this.formatearDuracion(song.duration)}</span>
+                            <div class="dropdown flex-shrink-0 ms-2" data-song-index="${index}">
+                                <button type="button" class="btn btn-link btn-sm p-0 text-secondary media-modal-more-btn" data-bs-toggle="dropdown" title="Más opciones" aria-label="Más opciones"><i class="fas fa-ellipsis-h"></i></button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><button type="button" class="dropdown-item media-modal-add-to-playlist" data-song-index="${index}"><i class="fas fa-plus me-2"></i>Agregar a playlist</button></li>
+                                </ul>
+                            </div>
                         </li>
                     `);
                 });
@@ -1257,13 +1438,20 @@
             if (songs.length === 0) {
                 list.append('<li class="list-group-item text-secondary">No hay canciones en este álbum</li>');
             } else {
-                songs.forEach(song => {
+                $('#albumModal').data('modal-songs', songs);
+                songs.forEach((song, index) => {
                     list.append(`
-                        <li class="list-group-item d-flex justify-content-between">
-                            <span>${song.title}</span>
-                            <span class="text-secondary small">
-                                ${this.formatearDuracion(song.duration)}
-                            </span>
+                        <li class="list-group-item d-flex justify-content-between align-items-center media-modal-song-item" data-song-index="${index}">
+                            <div class="d-flex flex-grow-1 align-items-center media-modal-song-play" style="cursor:pointer;min-width:0;">
+                                <span class="text-truncate">${this.escapeHtml(song.title || 'Sin título')}</span>
+                            </div>
+                            <span class="text-secondary small flex-shrink-0">${this.formatearDuracion(song.duration)}</span>
+                            <div class="dropdown flex-shrink-0 ms-2" data-song-index="${index}">
+                                <button type="button" class="btn btn-link btn-sm p-0 text-secondary media-modal-more-btn" data-bs-toggle="dropdown" title="Más opciones" aria-label="Más opciones"><i class="fas fa-ellipsis-h"></i></button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><button type="button" class="dropdown-item media-modal-add-to-playlist" data-song-index="${index}"><i class="fas fa-plus me-2"></i>Agregar a playlist</button></li>
+                                </ul>
+                            </div>
                         </li>
                     `);
                 });

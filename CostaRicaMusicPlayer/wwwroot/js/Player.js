@@ -172,6 +172,14 @@
 
         async agregarCancionAPlaylistActual() {
             const song = this.obtenerCancionActual();
+            await this.agregarCancionAPlaylist(song);
+        },
+
+        /**
+         * Agrega una canción a una playlist. Puede usarse desde la canción actual o desde cualquier tarjeta.
+         * @param {object} song - Objeto canción con songId, title, artistName, etc.
+         */
+        async agregarCancionAPlaylist(song) {
             if (!song || !song.songId) {
                 this.mostrarMensaje('No hay canción seleccionada.', 'warning');
                 return;
@@ -356,8 +364,13 @@
                 return;
             }
             if (this.playlist.length === 0) return;
-            let idx = this.currentIndex - 1;
-            if (idx < 0) idx = this.playlist.length - 1;
+            let idx;
+            if (this.isShuffle) {
+                idx = this.obtenerIndiceAleatorio();
+            } else {
+                idx = this.currentIndex - 1;
+                if (idx < 0) idx = this.playlist.length - 1;
+            }
             this.currentIndex = idx;
             this.reproducir(this.playlist[idx], this.playlist);
         },
@@ -379,15 +392,30 @@
 
         next() {
             if (this.playlist.length === 0) return;
-            let idx = this.currentIndex + 1;
-            if (idx >= this.playlist.length) idx = 0;
+            let idx;
+            if (this.isShuffle) {
+                idx = this.obtenerIndiceAleatorio();
+            } else {
+                idx = this.currentIndex + 1;
+                if (idx >= this.playlist.length) idx = 0;
+            }
             this.currentIndex = idx;
             this.reproducir(this.playlist[idx], this.playlist);
+        },
+
+        obtenerIndiceAleatorio() {
+            if (this.playlist.length <= 1) return 0;
+            let idx;
+            do {
+                idx = Math.floor(Math.random() * this.playlist.length);
+            } while (idx === this.currentIndex && this.playlist.length > 1);
+            return idx;
         },
 
         toggleShuffle() {
             this.isShuffle = !this.isShuffle;
             $('#btnShuffle').toggleClass('text-white', this.isShuffle).toggleClass('text-secondary', !this.isShuffle);
+            this.guardarEstado();
         },
 
         toggleRepeat() {

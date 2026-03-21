@@ -30,8 +30,17 @@
                 self.mostrarArtist(artistId);
             });
 
+            $(document).on('click', '.music-card-add-playlist-btn', async function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const songId = $(this).data('song-id');
+                if (!songId || !window.Player) return;
+                const song = self.currentDisplayedSongs.find(s => s.songId == songId);
+                if (song) await window.Player.agregarCancionAPlaylist(song);
+            });
+
             $(document).on('click', '.music-card', function(e) {
-                if ($(e.target).closest('.music-card-artist, .music-card-album').length) return;
+                if ($(e.target).closest('.music-card-artist, .music-card-album, .music-card-add-playlist-btn').length) return;
                 const card = $(this);
                 const songId = card.data('song-id');
                 if (songId && window.Player) {
@@ -127,15 +136,18 @@
                 const albumTitle = song.albumTitle || '';
                 const albumId = song.albumId || '';
 
-                // Construir el HTML del subtítulo: mostrar punto y álbum sólo si existe albumTitle
+                // Construir el HTML del subtítulo: artista y álbum en líneas separadas
                 let subtitleHtml = `<span class="music-card-artist" data-artist-id="${song.artistId || ''}" title="${artistName}">${artistName}</span>`;
                 if (albumTitle && albumTitle.length > 0) {
-                    subtitleHtml += ` <span class="music-card-dot">•</span> <span class="music-card-album" data-album-id="${albumId}" title="${albumTitle}">${albumTitle}</span>`;
+                    subtitleHtml += `<span class="music-card-album" data-album-id="${albumId}" title="${albumTitle}">${albumTitle}</span>`;
                 }
 
                 const card = `
                     <div class="music-card" data-song-id="${song.songId}">
                         <div class="music-card-cover">
+                            <button type="button" class="music-card-add-playlist-btn" title="Agregar a playlist" aria-label="Agregar a playlist" data-song-id="${song.songId}">
+                                <i class="fas fa-plus"></i>
+                            </button>
                             <div class="music-card-play-overlay"><i class="fas fa-play-circle"></i></div>
                             <img src="${cover}" alt="${albumTitle}" onerror="this.src='/img/placeholder-album.avif';" />
                         </div>
@@ -329,17 +341,23 @@
             if (songs.length === 0) {
                 listSongs.append(`<li class="list-group-item text-secondary">No hay canciones</li>`);
             } else {
-                songs.forEach(song => {
-
+                $('#artistModal').data('modal-songs', songs);
+                songs.forEach((song, index) => {
+                    const safeTitle = (song.title || 'Sin título').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
                     listSongs.append(`
-                <li class="list-group-item d-flex justify-content-between">
-                    <span>${song.title}</span>
-                    <span class="text-secondary small">
-                        ${this.formatearDuracion(song.duration)}
-                    </span>
+                <li class="list-group-item d-flex justify-content-between align-items-center media-modal-song-item" data-song-index="${index}">
+                    <div class="d-flex flex-grow-1 align-items-center media-modal-song-play" style="cursor:pointer;min-width:0;">
+                        <span class="text-truncate">${safeTitle}</span>
+                    </div>
+                    <span class="text-secondary small flex-shrink-0">${this.formatearDuracion(song.duration)}</span>
+                    <div class="dropdown flex-shrink-0 ms-2" data-song-index="${index}">
+                        <button type="button" class="btn btn-link btn-sm p-0 text-secondary media-modal-more-btn" data-bs-toggle="dropdown" title="Más opciones" aria-label="Más opciones"><i class="fas fa-ellipsis-h"></i></button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><button type="button" class="dropdown-item media-modal-add-to-playlist" data-song-index="${index}"><i class="fas fa-plus me-2"></i>Agregar a playlist</button></li>
+                        </ul>
+                    </div>
                 </li>
             `);
-
                 });
             }
 
@@ -388,13 +406,21 @@
             if (songs.length === 0) {
                 list.append(`<li class="list-group-item text-secondary">No hay canciones en este álbum</li>`);
             } else {
-                songs.forEach(song => {
+                $('#albumModal').data('modal-songs', songs);
+                songs.forEach((song, index) => {
+                    const safeTitle = (song.title || 'Sin título').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
                     list.append(`
-                <li class="list-group-item d-flex justify-content-between">
-                    <span>${song.title}</span>
-                    <span class="text-secondary small">
-                        ${this.formatearDuracion(song.duration)}
-                    </span>
+                <li class="list-group-item d-flex justify-content-between align-items-center media-modal-song-item" data-song-index="${index}">
+                    <div class="d-flex flex-grow-1 align-items-center media-modal-song-play" style="cursor:pointer;min-width:0;">
+                        <span class="text-truncate">${safeTitle}</span>
+                    </div>
+                    <span class="text-secondary small flex-shrink-0">${this.formatearDuracion(song.duration)}</span>
+                    <div class="dropdown flex-shrink-0 ms-2" data-song-index="${index}">
+                        <button type="button" class="btn btn-link btn-sm p-0 text-secondary media-modal-more-btn" data-bs-toggle="dropdown" title="Más opciones" aria-label="Más opciones"><i class="fas fa-ellipsis-h"></i></button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><button type="button" class="dropdown-item media-modal-add-to-playlist" data-song-index="${index}"><i class="fas fa-plus me-2"></i>Agregar a playlist</button></li>
+                        </ul>
+                    </div>
                 </li>
             `);
                 });

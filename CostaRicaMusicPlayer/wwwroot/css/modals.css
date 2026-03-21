@@ -152,10 +152,134 @@
         border-bottom: none !important;
     }
 
-    .media-modal .list-group-item:hover {
-        background: rgba(255, 255, 255, 0.08) !important;
-        padding-left: 10px !important;
-    }
+.media-modal .list-group-item:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    padding-left: 10px !important;
+}
+
+/* Canciones en modales artista/álbum - reproducir y menú */
+.media-modal-song-item {
+    cursor: pointer;
+}
+
+.media-modal-song-item .media-modal-more-btn {
+    opacity: 0.7;
+    font-size: 0.9rem;
+}
+
+.media-modal-song-item .media-modal-more-btn:hover {
+    opacity: 1;
+    color: #1db954 !important;
+}
+
+.media-modal-song-item .dropdown-menu {
+    background: #282828;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.media-modal-song-item .dropdown-item {
+    color: #fff;
+}
+
+.media-modal-song-item .dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #1db954;
+}
+
+/* Modal Agregar canciones a playlist */
+.add-songs-modal-list {
+    max-height: 360px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.03);
+}
+
+.add-songs-modal-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.add-songs-modal-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 4px;
+}
+
+.add-songs-modal-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
+
+.add-songs-modal-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    transition: background 0.15s ease;
+}
+
+.add-songs-modal-row:last-child {
+    border-bottom: none;
+}
+
+.add-songs-modal-row:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.add-songs-modal-row.added .add-songs-modal-add-btn {
+    opacity: 0.5;
+    cursor: default;
+    pointer-events: none;
+}
+
+.add-songs-modal-cover {
+    width: 48px;
+    height: 48px;
+    border-radius: 6px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.add-songs-modal-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.add-songs-modal-title {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.add-songs-modal-artist {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.add-songs-modal-duration {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.add-songs-modal-add-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: #1db954;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.add-songs-modal-add-btn:hover {
+    background: #1db954;
+    color: #fff;
+    transform: scale(1.1);
+}
 
 /* Responsive */
 @media (max-width: 576px) {

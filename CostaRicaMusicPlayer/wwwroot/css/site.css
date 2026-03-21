@@ -310,6 +310,35 @@ main {
     position: relative;
 }
 
+.music-card-add-playlist-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0, 0, 0, 0.6);
+    color: #1db954;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease, background 0.2s ease, transform 0.2s ease;
+    cursor: pointer;
+    z-index: 2;
+}
+
+.music-card-add-playlist-btn:hover {
+    background: #1db954;
+    color: #fff;
+    transform: scale(1.1);
+}
+
+.music-card:hover .music-card-add-playlist-btn {
+    opacity: 1;
+}
+
 .music-card-play-overlay {
     position: absolute;
     top: 0;
@@ -357,8 +386,9 @@ main {
     font-size: 0.8rem;
     color: #b3b3b3;
     display: flex;
-    align-items: center;
-    gap: 0.35rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
 }
 
 .music-card-artist {
@@ -371,10 +401,6 @@ main {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-}
-
-.music-card-dot {
-    font-size: 0.7rem;
 }
 
 .music-card-duration {

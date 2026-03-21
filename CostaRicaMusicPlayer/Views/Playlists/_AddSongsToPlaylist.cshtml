@@ -1,0 +1,23 @@
+@* Modal para agregar canciones a una playlist - búsqueda e inserción *@
+<div class="modal fade" id="modalAddSongsToPlaylist" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+        <div class="modal-content border-0 media-modal">
+            <div class="modal-header border-0 border-bottom border-secondary">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus-circle me-2 text-spotify-green"></i>
+                    <span id="modalAddSongsToPlaylistTitle">Agregar canciones</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <input type="text" id="modalAddSongsSearch" class="form-control bg-dark text-white border-secondary"
+                           placeholder="Buscar por título o artista..." />
+                </div>
+                <div id="modalAddSongsList" class="add-songs-modal-list">
+                    <!-- Lista de canciones generada por JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
