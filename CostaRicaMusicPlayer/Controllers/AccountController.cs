@@ -1,16 +1,21 @@
+using System.Net.Http.Json;
+using System.Text.Json;
 using CostaRicaMusicBLL.Dtos;
-using CostaRicaMusicBLL.Servicios.Auth;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CostaRicaMusicPlayer.Controllers
 {
     public class AccountController : Controller
     {
-        private readonly IAuthServicio _authServicio;
-
-        public AccountController(IAuthServicio authServicio)
+        private readonly IHttpClientFactory _httpClientFactory;
+        private static readonly JsonSerializerOptions JsonOptions = new()
         {
-            _authServicio = authServicio;
+            PropertyNameCaseInsensitive = true
+        };
+
+        public AccountController(IHttpClientFactory httpClientFactory)
+        {
+            _httpClientFactory = httpClientFactory;
         }
 
         [HttpGet]
@@ -31,7 +36,13 @@ namespace CostaRicaMusicPlayer.Controllers
                 return View(model);
             }
 
-            var response = await _authServicio.LoginAsync(model);
+            var response = await PostAuthAsync<LoginDto, AuthUserDto>("api/auth/login", model);
+            if (response == null)
+            {
+                ViewBag.Error = "No se pudo conectar con el servicio de autenticacion. Verifique que la API este en ejecucion.";
+                return View(model);
+            }
+
             if (!response.esCorrecto || response.Data == null)
             {
                 ViewBag.Error = response.mensaje ?? "No fue posible iniciar sesion.";
@@ -61,7 +72,13 @@ namespace CostaRicaMusicPlayer.Controllers
                 return View(model);
             }
 
-            var response = await _authServicio.RegisterAsync(model);
+            var response = await PostAuthAsync<RegisterDto, AuthUserDto>("api/auth/register", model);
+            if (response == null)
+            {
+                ViewBag.Error = "No se pudo conectar con el servicio de autenticacion. Verifique que la API este en ejecucion.";
+                return View(model);
+            }
+
             if (!response.esCorrecto || response.Data == null)
             {
                 ViewBag.Error = response.mensaje ?? "No fue posible registrar el usuario.";
@@ -78,6 +95,28 @@ namespace CostaRicaMusicPlayer.Controllers
         {
             HttpContext.Session.Clear();
             return RedirectToAction("Index", "Home");
+        }
+
+        private async Task<CustomResponse<TData>?> PostAuthAsync<TBody, TData>(string relativeUrl, TBody body)
+        {
+            var client = _httpClientFactory.CreateClient("AuthApi");
+            try
+            {
+                using var httpResponse = await client.PostAsJsonAsync(relativeUrl, body);
+                return await httpResponse.Content.ReadFromJsonAsync<CustomResponse<TData>>(JsonOptions);
+            }
+            catch (HttpRequestException)
+            {
+                return null;
+            }
+            catch (TaskCanceledException)
+            {
+                return null;
+            }
+            catch (JsonException)
+            {
+                return null;
+            }
         }
     }
 }

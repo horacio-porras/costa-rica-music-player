@@ -1,0 +1,22 @@
+@CostaRicaMusicPlayerAPI_HostAddress = http://localhost:5247
+
+POST {{CostaRicaMusicPlayerAPI_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "emailOrUsername": "usuario@ejemplo.com",
+  "password": "tu-contrasena"
+}
+
+###
+
+POST {{CostaRicaMusicPlayerAPI_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "nuevo_usuario",
+  "email": "nuevo@ejemplo.com",
+  "password": "minimo6"
+}
+
+###

@@ -4,7 +4,6 @@ using CostaRicaMusicBLL.Servicios.Artists;
 using CostaRicaMusicBLL.Servicios.Playlists;
 using CostaRicaMusicBLL.Servicios.Songs;
 using CostaRicaMusicBLL.Servicios.Albums;
-using CostaRicaMusicBLL.Servicios.Auth;
 using CostaRicaMusicDAL.Data;
 using CostaRicaMusicDAL.Repositorios.Generico;
 
@@ -31,7 +30,14 @@ builder.Services.AddScoped<ISongServicio, SongServicio>();
 builder.Services.AddScoped<IArtistServicio, ArtistServicio>();
 builder.Services.AddScoped<IPlaylistServicio, PlaylistServicio>();
 builder.Services.AddScoped<IAlbumServicio, AlbumServicio>();
-builder.Services.AddScoped<IAuthServicio, AuthServicio>();
+
+builder.Services.AddHttpClient("AuthApi", (sp, client) =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    var baseUrl = (config["AuthApi:BaseUrl"] ?? "https://localhost:7134/").TrimEnd('/') + "/";
+    client.BaseAddress = new Uri(baseUrl);
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
 
 builder.Services.AddSingleton<IHostEnvironment>(builder.Environment);
 
